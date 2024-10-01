@@ -1,0 +1,86 @@
+---
+title: TP1 - Propagación de Ruido en Sistemas LTI
+subtitle: Elementos de Matemáticas Aplicadas para Aplicaciones Tecnológicas
+author: Matías Roqueta
+institute: Instituto Balseiro
+lang: es
+biblio-style: ieee
+highlight-style: arrow
+format: 
+#  pdf:
+#    pdf-engine: pdflatex
+#    cite-method: biblatex
+#    classoption: twocolumn
+#    geometry:
+#      - top=20mm
+#      - bottom=20mm
+#      - left=12mm
+#      - right=12mm
+#    latex-auto-install: true
+  html: 
+    code-fold: true
+    theme: flatly
+    fig-align: center
+    toc: true
+jupyter: python3
+---
+
+Se analizará un sistema de control de la orientación de un satélite tal como es representado en la @fig-1.
+
+![Diagrama](Images/fig1.svg){#fig-1}
+
+El sistema de control se representa como diagrama de bloques como se ve en la @fig-2.
+
+![Diagrama](Images/fig2.svg){#fig-2}
+
+En donde $\theta_{ref}$ es la entrada, y $\theta$ la salida. Para encontrar la función de transferencia se plantean las ecuaciones
+
+$$
+T_c(s) = C_p (\Theta_{ref}(s) - \Theta(s)) - \frac{C_d}{Js}T_c(s)
+$${#eq-1}
+
+$$
+\Theta(s) = \frac{1}{Js^2} T_c(s)
+$${#eq-2}
+
+Reemplazando la @eq-2 en la @eq-1 se obtiene la expresión
+
+$$
+Js^2 \Theta(s) = C_p (\Theta_{ref}(s) - \Theta(s)) - C_d s \Theta(s)
+$${#eq-3}
+
+La cual se despeja para obtener la función de transferencia,
+
+$$
+\frac{\Theta(s)}{\Theta_{ref}(s)}  = \frac{\frac{C_p}{J}}{s^2  + \frac{C_d}{J} s + \frac{C_p}{J}} 
+$${#eq-4}
+
+Esto se relaciona con la frecuencia natural $\omega_n$ y el factor de amortiguamiento $\xi$
+
+$$
+\frac{\Theta(s)}{\Theta_{ref}(s)}  = \frac{\omega_n^2}{s^2  + 2\xi\omega_n s + \omega_n^2} 
+$${#eq-5}
+
+En donde es fácil ver que 
+
+$$
+\omega_n = \sqrt{\frac{C_p}{J}}, \qquad \xi = \frac{1}{2}\frac{C_d}{\sqrt{JC_p}}.
+$${#eq-6}
+
+En particular, con los valores dados en la tabla
+
+| Parámetro | Valor |
+| :-: | :-: | 
+| $J$ | 1000 [kg m²] |
+| $\omega_n$ | 0,1 [rad/s] |
+| $\xi$ | 0,7 |
+
+Se obtienen los valores de $C_d$ y $C_p$
+
+$$
+C_p = \omega_n^2J = 10 \text{ kg m²/s²}
+$$
+
+$$
+C_d = 2\xi\omega_n J = 140 \text{ kg m²/s}
+$$

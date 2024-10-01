@@ -1,0 +1,19 @@
+<mxfile host="65bd71144e">
+    <diagram id="YNjEphW2UKogb6n-R6iJ" name="Page-1">
+        <mxGraphModel dx="461" dy="462" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="4" value="" style="externalPins=0;recursiveResize=0;shadow=0;dashed=0;align=center;strokeWidth=1;shape=mxgraph.rtl.abstract.entity;container=0;collapsible=0;kind=combinational;drawPins=1;left=%2B;right=1;bottom=-;top=0;bottomAnchor=middle;topRot=270;topAnchor=middle;bottomRot=90;leftAnchor=left;leftRot=0;rightAnchor=right;rightRot=180;fontSize=40;spacingTop=-10;spacingLeft=2;editable=1;resizable=1;movable=1;rotatable=1;deletable=1;connectable=1;" vertex="1" parent="1">
+                    <mxGeometry x="150" y="190" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Cp" style="triangle;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="280" y="190" width="50" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="1/J" style="triangle;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="425" y="190" width="50" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
