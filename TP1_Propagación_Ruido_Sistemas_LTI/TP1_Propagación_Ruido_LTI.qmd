@@ -25,6 +25,8 @@ format:
 jupyter: python3
 ---
 
+## Descripción del Problema
+
 Se analizará un sistema de control de la orientación de un satélite tal como es representado en la @fig-1.
 
 ![Diagrama](Images/fig1.svg){#fig-1}
@@ -55,19 +57,21 @@ $$
 \frac{\Theta(s)}{\Theta_{ref}(s)}  = \frac{\frac{C_p}{J}}{s^2  + \frac{C_d}{J} s + \frac{C_p}{J}} 
 $${#eq-4}
 
-Esto se relaciona con la frecuencia natural $\omega_n$ y el factor de amortiguamiento $\xi$
+### Parámetros del sistema
+
+La @eq-4 expresa la transferencia en función de los factores $C_p$ y $C_d$. Esta expresión es equivalente a la transferencia expresada en función de la frecuencia natural $\omega_n$ y el factor de amortiguamiento $\xi$,
 
 $$
 \frac{\Theta(s)}{\Theta_{ref}(s)}  = \frac{\omega_n^2}{s^2  + 2\xi\omega_n s + \omega_n^2} 
 $${#eq-5}
 
-En donde es fácil ver que 
+Al comparar la @eq-4 con la @eq-5 es fácil ver que la relación entre los parámetros es dada por
 
 $$
 \omega_n = \sqrt{\frac{C_p}{J}}, \qquad \xi = \frac{1}{2}\frac{C_d}{\sqrt{JC_p}}.
 $${#eq-6}
 
-En particular, con los valores dados en la tabla
+Si se consideran los valores dados en la tabla
 
 | Parámetro | Valor |
 | :-: | :-: | 
@@ -75,12 +79,335 @@ En particular, con los valores dados en la tabla
 | $\omega_n$ | 0,1 [rad/s] |
 | $\xi$ | 0,7 |
 
-Se obtienen los valores de $C_d$ y $C_p$
+Se obtienen los valores de $C_d$ y $C_p$,
+
+| Parámetro | Fórmula | Valor |
+| :-: | :-: | :-: |
+| $C_p$ | $\omega_n^2J$ | 10 [kg m²/s²] |
+| $C_d$ | $2\xi\omega_n J$ | 140 [kg m²/s] |
+
+
+```{python}
+J = 1000
+w_n = 0.1
+xi = 0.7
+
+C_p = w_n**2*J
+C_d = 2*xi*w_n*J
+```
+
+## Consideración de fuentes de ruido
+
+Al considerar las fuentes de ruido que alejan al comportamiento del sistema representado en la @fig-2 de su comportamiento ideal,
+
+- **WNTN2**: Ruido de torque
+- **WNRS5**: Ruido de velocidad
+- **WNPS8**: Ruido de posición
+
+se obtiene el diagrama en bloques representado en la @fig-3.
+
+![Diagrama](Images/fig3.svg){#fig-3}
+
+Los ruidos se representan como ruido coloreado con frecuencia de corte $\omega_C$, y se expresan de la siguiente forma
 
 $$
-C_p = \omega_n^2J = 10 \text{ kg m²/s²}
+N(s) = \frac{\omega_{c}}{s+\omega_{c}}W(s)
 $$
 
+En donde $W(s)$ es ruido blanco gausiano. 
+
+Incorporando estos términos de ruido, la @eq-1 se convierte en la @eq-7,
+
 $$
-C_d = 2\xi\omega_n J = 140 \text{ kg m²/s}
+T_c(s) = C_p (\Theta_{ref}(s) - \Theta(s) - N_{T}(s)) - C_d \left(\frac{1}{Js}(T_c(s)+N_{P}(s)) + N_{V}(s)\right)
+$${#eq-7}
+
+Y la @eq-2 se convierte en la @eq-8,
+
 $$
+\Theta(s) = \frac{1}{Js^2} (T_c(s)+N_{P}(s))
+$${#eq-8}
+
+
+Reemplazando la @eq-8 en la @eq-7 se obtiene
+
+$$
+Js^2\Theta(s)-N_{P}(s) = C_p (\Theta_{ref}(s) - \Theta(s) - N_{T}(s)) - C_d \left(s \Theta(s) + N_{V}(s)\right)
+$${#eq-9}
+
+Expresando $\Theta(s)$ en función de los demás términos se obtiene
+
+$$
+(Js^2+C_d s + C_p)\Theta(s) = C_p \Theta_{ref}(s) - C_pN_{T}(s) - C_dN_{V}(s) + N_{P}(s)
+$${#eq-10}
+
+Finalmente, esto se puede expresar de la siguiente forma.
+
+$$
+\begin{aligned}
+\Theta(s) = &\frac{C_p}{Js^2+C_d s + C_p} \Theta_{ref}(s) + \frac{- C_p}{Js^2+C_d s + C_p}N_{T}(s)\\ &+ \frac{- C_d}{Js^2+C_d s + C_p}N_{V}(s) + \frac{1}{Js^2+C_d s + C_p}N_{P}(s)
+\end{aligned}
+$${#eq-H_full_pos}
+
+La @eq-10 describe las contribuciones de la referencia a la posición angular, así como de los tres términos de ruido. Además, al cumplirse $\dot{\Theta}(s)=s\Theta(s)$, se obtiene la ecuación de la velocidad angular en función de sus contribuciones.
+
+$$
+\begin{aligned}
+\dot{\Theta}(s) = &\frac{C_p s}{Js^2+C_d s + C_p} \Theta_{ref}(s) + \frac{- C_p s}{Js^2+C_d s + C_p}N_{T}(s)\\ &+ \frac{- C_d s}{Js^2+C_d s + C_p}N_{V}(s) + \frac{s}{Js^2+C_d s + C_p}N_{P}(s)
+\end{aligned}
+$${#eq-H_full_vel}
+
+Aplicando el principio de superposición, la @eq-H_full_pos y @eq-H_full_vel se pueden expresar de la siguiente forma
+
+$$
+\begin{aligned}
+\Theta(s) = &H_{0}(s) \Theta_{ref}(s) + H_{T0}(s)N_{T}(s) + H_{V0}(s)N_{V}(s) + H_{P0}(s)N_{P}(s)\\[1em]
+\dot{\Theta}(s) = &H_{1}(s) \Theta_{ref}(s) + H_{T1}(s)N_{T}(s) + H_{V1}(s)N_{V}(s) + H_{P1}(s)N_{P}(s)
+\end{aligned}
+$${#eq-H_redux}
+
+<!--#
+$$
+\begin{aligned}
+H_T(s) &= \left.\frac{\Theta(s)}{N_T(s)}\right|_{
+  \begin{aligned}\Theta_{ref}&=0\\ N_V&=0\\ N_P &=0\end{aligned}} =  \frac{- C_p}{Js^2+C_d s + C_p}\\
+H_V(s) &= \left.\frac{\Theta(s)}{N_T(s)}\right|_{
+  \begin{aligned}\Theta_{ref}&=0\\ N_T&=0\\ N_P &=0\end{aligned}} =  \frac{- C_d}{Js^2+C_d s + C_p}\\
+H_P(s) &= \left.\frac{\Theta(s)}{N_T(s)}\right|_{
+  \begin{aligned}\Theta_{ref}&=0\\ N_T&=0\\ N_V &=0\end{aligned}} =  \frac{1}{Js^2+C_d s + C_p}\\
+\end{aligned}
+$${#eq-H_redux_pos}
+-->
+En donde las transferencias del ruido son
+$$
+\begin{matrix}
+H_{T0}(s) = \dfrac{- C_p}{Js^2+C_d s + C_p}&
+H_{T1}(s) = \dfrac{- C_p s}{Js^2+C_d s + C_p}\\
+H_{V0}(s) = \dfrac{- C_d}{Js^2+C_d s + C_p}&
+H_{V1}(s) = \dfrac{- C_d s}{Js^2+C_d s + C_p}\\
+H_{P0}(s) = \dfrac{1}{Js^2+C_d s + C_p}&
+H_{P1}(s) = \dfrac{s}{Js^2+C_d s + C_p}\\
+\end{matrix}
+$${#eq-Hs}
+
+```{python}
+import scipy.signal as signal
+
+H_t0 = signal.TransferFunction([-C_p], [J, C_d, C_p])
+H_v0 = signal.TransferFunction([-C_d], [J, C_d, C_p])
+H_p0 = signal.TransferFunction([1], [J, C_d, C_p])
+H_t1 = signal.TransferFunction([-C_p, 0], [J, C_d, C_p])
+H_v1 = signal.TransferFunction([-C_d, 0], [J, C_d, C_p])
+H_p1 = signal.TransferFunction([1, 0], [J, C_d, C_p])
+```
+
+### Respuesta al Impulso
+
+Se procede a analizar las respuestas al impulso del sistema, dadas por
+
+$$
+h_i(t) = \mathcal{L}^{-1}\left\{H_i(s)\right\}
+$$
+
+Estas se pueden calcular analíticamente, o bien utilizando `scipy.signal.impulse`. Los resultados se presentan en la @fig-h0 y la @fig-h1.
+
+```{python}
+#| fig-cap: Respuestas al impulso de las fuentes de ruido sobre la posición angular.
+#| label: fig-h0
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme()
+
+T, h_t0 = signal.impulse(H_t0)
+T, h_v0 = signal.impulse(H_v0)
+T, h_p0 = signal.impulse(H_p0)
+
+fig, ax = plt.subplots(3,1, sharex=True)
+ax[0].plot(T, h_t0)
+ax[1].plot(T, h_v0)
+ax[2].plot(T, h_p0)
+
+fig.suptitle(r'Respuestas al impulso del sistema sobre $\theta$')
+ax[0].set_ylabel(r'$h_{T0}$')
+ax[1].set_ylabel(r'$h_{V0}$')
+ax[2].set_ylabel(r'$h_{P0}$')
+ax[2].set_xlabel(r'$t$ [s]')
+for i in [0,1,2]:
+  ax[i].set_xlim(min(T), max(T))
+  ax[i].grid(True)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: Respuestas al impulso de las fuentes de ruido sobre la velocidad angular.
+#| label: fig-h1
+
+T, h_t1 = signal.impulse(H_t1)
+T, h_v1 = signal.impulse(H_v1)
+T, h_p1 = signal.impulse(H_p1)
+
+fig, ax = plt.subplots(3,1, sharex=True)
+ax[0].plot(T, h_t1)
+ax[1].plot(T, h_v1)
+ax[2].plot(T, h_p1)
+
+fig.suptitle(r'Respuestas al impulso del sistema sobre $\dot\theta$')
+ax[0].set_ylabel(r'$h_{V1}$')
+ax[1].set_ylabel(r'$h_{V1}$')
+ax[2].set_ylabel(r'$h_{V1}$')
+ax[2].set_xlabel(r'$t$ [s]')
+for i in [0,1,2]:
+  ax[i].set_xlim(min(T), max(T))
+  ax[i].grid(True)
+
+plt.tight_layout()
+plt.show()
+```
+
+Los resultados presentados en las figuras indican un estado transitorio de aproximadamente $50$ s, lo cual da una noción de la escala temporal del sistema. Este resultado motiva la elección de un tiempo de muestreo de $T_s = 10$ ms para realizar una simulación digital del sistema.
+
+
+## Análisis de la respuesta del sistema ante ruido blanco
+
+A partir de los gráficos de las respuestas al impulso presentados en la @fig-h0 y @fig-h1, así como las expresiones de las transferencias presentadas en la @eq-H_redux, se determina que la respuesta del sistema ante las fuentes de ruido solo varía por un factor multiplicativo. Por este motivo se procede únicamente a analizar la respuesta al ruido de torque, sabiendo que el comportamiento ante el ruido de posición y el ruido de velocidad será similar.
+
+### Simulación temporal 
+
+Para simular la respuesta del sistema ante ruido blanco, se define una señal de entrada $n_T[t]$ de $N$ muestras independientes idénticamente distribuidas, definida por
+
+$$
+  \mathbf{n_T} \sim \mathcal{N}(\mathbf 0_N, \sigma^2 I_N) 
+$$
+
+A partir de esta señal se simulan las salidas, $\theta[t]$ y $\dot\theta[t]$, utilizando `scipy.signal.lsim`.
+
+```{python}
+#| fig-cap: Respuestas del sistema ante una entrada de ruido blanco
+#| label: fig-ruido
+
+import numpy as np
+
+t_s = 1e-2
+var_n = 100
+N = 400000
+t = np.linspace(0, N*t_s, N)
+
+n_t = np.random.normal(0, np.sqrt(var_n), N)
+
+T, pos, _ = signal.lsim(H_t0, n_t, t)
+T, vel, _ = signal.lsim(H_t1, n_t, t)
+
+fig, ax = plt.subplots(3,1, sharex=True)
+fig.suptitle('Respuestas al impulso del sistema', fontsize=16)
+ax[0].plot(T, n_t)
+ax[1].plot(T, pos)
+ax[2].plot(T, vel)
+ax[0].set_ylabel(r'$n_T$')
+ax[1].set_ylabel(r'$\theta$')
+ax[2].set_ylabel(r'$\dot\theta$')
+ax[2].set_xlabel(r'$t$ [s]')
+for i in [0,1,2]:
+  ax[i].set_xlim(0,800)
+  ax[i].grid(True)
+
+plt.tight_layout()
+plt.show()
+```
+
+Se calcula el valor cuadrático medio empírico de las señales con la fórumla
+
+$$
+  \text{MSV}(\mathbf{x}) = \frac{1}{N}\sum_{t=0}^{N-1}x^2[t]
+$$
+
+Los resultados para la realización vista en la @fig-ruido se presentan a continuación
+
+```{python}
+def round_sig_figs(value, sig_figs):
+    if value == 0:
+        return 0
+    else:
+        return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
+
+msv_ruido = np.mean([n**2 for n in n_t])
+msv_pos = np.mean([n**2 for n in pos])
+msv_vel = np.mean([n**2 for n in vel])
+
+
+print(f"Valor cuadrático medio del ruido de entrada:\t {round_sig_figs(msv_ruido, 3)}")
+print(f"Valor cuadrático medio de la posición angular:\t {round_sig_figs(msv_pos, 3)}")
+print(f"Valor cuadrático medio de la velocidad angular:\t {round_sig_figs(msv_vel, 3)}")
+```
+
+
+### Análisis en el dominio de la frecuencia
+
+Se procede a calcular la distribución espectral de potencia de $\theta[t]$ y $\dot\theta[t]$ ante la entrada $n_T[t]$, a partir de la expresión teórica
+
+$$
+\begin{aligned}
+S_\theta(f) &= \left| H_{T0}(j2\pi f) \right|^2 S_{N_T}(f)\\
+S_{\dot\theta}(f) &= \left| H_{T1}(j2\pi f) \right|^2 S_{N_T}(f)
+\end{aligned}
+$$
+
+En donde $S_{n_T}$ es la distribución espectral de potencia de ruido blanco con varianza $\sigma^2$ muestreado a una frecuencia $f_s = 1/T_S$
+
+$$
+  S_{N_T}(f) = \frac{\sigma^2}{f_S} \Pi\left(\frac{f}{f_S}\right)
+$$
+
+```{python}
+#| fig-cap: Respuestas del sistema ante una entrada de ruido blanco
+#| label: fig-dep
+
+f = np.fft.fftfreq(N, t_s)
+psd_N = np.array([var_n*t_s for x in f])
+
+def H_T0fun(f):
+    w = 2*np.pi*f
+    return -C_p/(J*(1j*w)**2+C_d*1j*w+C_p)
+
+def H_T1fun(f):
+    w = 2*np.pi*f
+    return -C_p*(1j*w)/(J*(1j*w)**2+C_d*1j*w+C_p)
+
+S_0 = np.array([np.abs(H_T0fun(fi))**2 for fi in f])*psd_N
+S_1 = np.array([np.abs(H_T1fun(fi))**2 for fi in f])*psd_N
+
+fig, ax = plt.subplots(3,1, sharex=True)
+ax[0].loglog(f[0:N//2], psd_N[0:N//2])
+ax[1].loglog(f[0:N//2], S_0[0:N//2])
+ax[2].loglog(f[0:N//2], S_1[0:N//2])
+fig.suptitle('Distribución Espectral de Potencia')
+ax[0].set_ylabel(r'$S_{N_T}$')
+ax[1].set_ylabel(r'$S_{\Theta}$')
+ax[2].set_ylabel(r'$S_{\dot\Theta}$')
+ax[2].set_xlabel(r'$f$ [Hz]')
+for i in [0,1,2]:
+    ax[i].grid(True)
+```
+
+La @fig-dep indica que $H_{T0}$ actúa como un filtro pasa bajo, mientras que $H_{T1}$ actúa como un filtro pasa banda. Esto es consistente con un análisis cualitativo de las formas de onda presentadas en la @fig-ruido. 
+
+Finalmente, se calcula el valor cuadrático medio teórico de las señales, dado por
+
+$$
+  \text{MSV}(\mathbf{x}) = \int_{-\infty}^{\infty} S_X(f) df
+$$
+
+Los resultados utilizando integración numérica se presentan a continuación.
+```{python}
+f = np.fft.fftshift(f)
+S_0 = np.fft.fftshift(S_0)
+S_1 = np.fft.fftshift(S_1)
+
+msv_ruido = np.trapezoid(psd_N, f)
+msv_pos = np.trapezoid(S_0, f)
+msv_vel = np.trapezoid(S_1, f)
+
+print(f"Valor cuadrático medio del ruido de entrada:\t {round_sig_figs(msv_ruido, 3)}")
+print(f"Valor cuadrático medio de la posición angular:\t {round_sig_figs(msv_pos, 3)}")
+print(f"Valor cuadrático medio de la velocidad angular:\t {round_sig_figs(msv_vel, 3)}")
+```

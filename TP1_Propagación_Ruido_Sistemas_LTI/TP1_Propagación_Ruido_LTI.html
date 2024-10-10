@@ -21,6 +21,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -70,8 +104,24 @@ window.Quarto = {
 <body>
 
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
-<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-  
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Tabla de contenidos</h2>
+   
+  <ul>
+  <li><a href="#descripción-del-problema" id="toc-descripción-del-problema" class="nav-link active" data-scroll-target="#descripción-del-problema">Descripción del Problema</a>
+  <ul class="collapse">
+  <li><a href="#parámetros-del-sistema" id="toc-parámetros-del-sistema" class="nav-link" data-scroll-target="#parámetros-del-sistema">Parámetros del sistema</a></li>
+  </ul></li>
+  <li><a href="#consideración-de-fuentes-de-ruido" id="toc-consideración-de-fuentes-de-ruido" class="nav-link" data-scroll-target="#consideración-de-fuentes-de-ruido">Consideración de fuentes de ruido</a></li>
+  <li><a href="#respuesta-al-impulso" id="toc-respuesta-al-impulso" class="nav-link" data-scroll-target="#respuesta-al-impulso">Respuesta al Impulso</a></li>
+  <li><a href="#análisis-de-la-respuesta-del-sistema-ante-ruido-blanco" id="toc-análisis-de-la-respuesta-del-sistema-ante-ruido-blanco" class="nav-link" data-scroll-target="#análisis-de-la-respuesta-del-sistema-ante-ruido-blanco">Análisis de la respuesta del sistema ante ruido blanco</a>
+  <ul class="collapse">
+  <li><a href="#simulación-temporal" id="toc-simulación-temporal" class="nav-link" data-scroll-target="#simulación-temporal">Simulación temporal</a></li>
+  <li><a href="#análisis-en-el-dominio-de-la-frecuencia" id="toc-análisis-en-el-dominio-de-la-frecuencia" class="nav-link" data-scroll-target="#análisis-en-el-dominio-de-la-frecuencia">Análisis en el dominio de la frecuencia</a></li>
+  </ul></li>
+  </ul>
+</nav>
 </div>
 <main class="content" id="quarto-document-content">
 
@@ -108,6 +158,8 @@ window.Quarto = {
 </header>
 
 
+<section id="descripción-del-problema" class="level2">
+<h2 class="anchored" data-anchor-id="descripción-del-problema">Descripción del Problema</h2>
 <p>Se analizará un sistema de control de la orientación de un satélite tal como es representado en la <a href="#fig-1" class="quarto-xref">Figura&nbsp;1</a>.</p>
 <div id="fig-1" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -145,15 +197,17 @@ Js^2 \Theta(s) = C_p (\Theta_{ref}(s) - \Theta(s)) - C_d s \Theta(s)
 <p><span id="eq-4"><span class="math display">\[
 \frac{\Theta(s)}{\Theta_{ref}(s)}  = \frac{\frac{C_p}{J}}{s^2  + \frac{C_d}{J} s + \frac{C_p}{J}}
 \tag{4}\]</span></span></p>
-<p>Esto se relaciona con la frecuencia natural <span class="math inline">\(\omega_n\)</span> y el factor de amortiguamiento <span class="math inline">\(\xi\)</span></p>
+<section id="parámetros-del-sistema" class="level3">
+<h3 class="anchored" data-anchor-id="parámetros-del-sistema">Parámetros del sistema</h3>
+<p>La <a href="#eq-4" class="quarto-xref">Ecuación&nbsp;4</a> expresa la transferencia en función de los factores <span class="math inline">\(C_p\)</span> y <span class="math inline">\(C_d\)</span>. Esta expresión es equivalente a la transferencia expresada en función de la frecuencia natural <span class="math inline">\(\omega_n\)</span> y el factor de amortiguamiento <span class="math inline">\(\xi\)</span>,</p>
 <p><span id="eq-5"><span class="math display">\[
 \frac{\Theta(s)}{\Theta_{ref}(s)}  = \frac{\omega_n^2}{s^2  + 2\xi\omega_n s + \omega_n^2}
 \tag{5}\]</span></span></p>
-<p>En donde es fácil ver que</p>
+<p>Al comparar la <a href="#eq-4" class="quarto-xref">Ecuación&nbsp;4</a> con la <a href="#eq-5" class="quarto-xref">Ecuación&nbsp;5</a> es fácil ver que la relación entre los parámetros es dada por</p>
 <p><span id="eq-6"><span class="math display">\[
 \omega_n = \sqrt{\frac{C_p}{J}}, \qquad \xi = \frac{1}{2}\frac{C_d}{\sqrt{JC_p}}.
 \tag{6}\]</span></span></p>
-<p>En particular, con los valores dados en la tabla</p>
+<p>Si se consideran los valores dados en la tabla</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -176,13 +230,390 @@ Js^2 \Theta(s) = C_p (\Theta_{ref}(s) - \Theta(s)) - C_d s \Theta(s)
 </tr>
 </tbody>
 </table>
-<p>Se obtienen los valores de <span class="math inline">\(C_d\)</span> y <span class="math inline">\(C_p\)</span></p>
+<p>Se obtienen los valores de <span class="math inline">\(C_d\)</span> y <span class="math inline">\(C_p\)</span>,</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: center;">Parámetro</th>
+<th style="text-align: center;">Fórmula</th>
+<th style="text-align: center;">Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;"><span class="math inline">\(C_p\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(\omega_n^2J\)</span></td>
+<td style="text-align: center;">10 [kg m²/s²]</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"><span class="math inline">\(C_d\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(2\xi\omega_n J\)</span></td>
+<td style="text-align: center;">140 [kg m²/s]</td>
+</tr>
+</tbody>
+</table>
+<div id="d1a06a55" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>J <span class="op">=</span> <span class="dv">1000</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>w_n <span class="op">=</span> <span class="fl">0.1</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>xi <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>C_p <span class="op">=</span> w_n<span class="op">**</span><span class="dv">2</span><span class="op">*</span>J</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>C_d <span class="op">=</span> <span class="dv">2</span><span class="op">*</span>xi<span class="op">*</span>w_n<span class="op">*</span>J</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="consideración-de-fuentes-de-ruido" class="level2">
+<h2 class="anchored" data-anchor-id="consideración-de-fuentes-de-ruido">Consideración de fuentes de ruido</h2>
+<p>Al considerar las fuentes de ruido que alejan al comportamiento del sistema representado en la <a href="#fig-2" class="quarto-xref">Figura&nbsp;2</a> de su comportamiento ideal,</p>
+<ul>
+<li><strong>WNTN2</strong>: Ruido de torque</li>
+<li><strong>WNRS5</strong>: Ruido de velocidad</li>
+<li><strong>WNPS8</strong>: Ruido de posición</li>
+</ul>
+<p>se obtiene el diagrama en bloques representado en la <a href="#fig-3" class="quarto-xref">Figura&nbsp;3</a>.</p>
+<div id="fig-3" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="Images/fig3.svg" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figura&nbsp;3: Diagrama
+</figcaption>
+</figure>
+</div>
+<p>Los ruidos se representan como ruido coloreado con frecuencia de corte <span class="math inline">\(\omega_C\)</span>, y se expresan de la siguiente forma</p>
 <p><span class="math display">\[
-C_p = \omega_n^2J = 10 \text{ kg m²/s²}
+N(s) = \frac{\omega_{c}}{s+\omega_{c}}W(s)
 \]</span></p>
+<p>En donde <span class="math inline">\(W(s)\)</span> es ruido blanco gausiano.</p>
+<p>Incorporando estos términos de ruido, la <a href="#eq-1" class="quarto-xref">Ecuación&nbsp;1</a> se convierte en la <a href="#eq-7" class="quarto-xref">Ecuación&nbsp;7</a>,</p>
+<p><span id="eq-7"><span class="math display">\[
+T_c(s) = C_p (\Theta_{ref}(s) - \Theta(s) - N_{T}(s)) - C_d \left(\frac{1}{Js}(T_c(s)+N_{P}(s)) + N_{V}(s)\right)
+\tag{7}\]</span></span></p>
+<p>Y la <a href="#eq-2" class="quarto-xref">Ecuación&nbsp;2</a> se convierte en la <a href="#eq-8" class="quarto-xref">Ecuación&nbsp;8</a>,</p>
+<p><span id="eq-8"><span class="math display">\[
+\Theta(s) = \frac{1}{Js^2} (T_c(s)+N_{P}(s))
+\tag{8}\]</span></span></p>
+<p>Reemplazando la <a href="#eq-8" class="quarto-xref">Ecuación&nbsp;8</a> en la <a href="#eq-7" class="quarto-xref">Ecuación&nbsp;7</a> se obtiene</p>
+<p><span id="eq-9"><span class="math display">\[
+Js^2\Theta(s)-N_{P}(s) = C_p (\Theta_{ref}(s) - \Theta(s) - N_{T}(s)) - C_d \left(s \Theta(s) + N_{V}(s)\right)
+\tag{9}\]</span></span></p>
+<p>Expresando <span class="math inline">\(\Theta(s)\)</span> en función de los demás términos se obtiene</p>
+<p><span id="eq-10"><span class="math display">\[
+(Js^2+C_d s + C_p)\Theta(s) = C_p \Theta_{ref}(s) - C_pN_{T}(s) - C_dN_{V}(s) + N_{P}(s)
+\tag{10}\]</span></span></p>
+<p>Finalmente, esto se puede expresar de la siguiente forma.</p>
+<p><span id="eq-H_full_pos"><span class="math display">\[
+\begin{aligned}
+\Theta(s) = &amp;\frac{C_p}{Js^2+C_d s + C_p} \Theta_{ref}(s) + \frac{- C_p}{Js^2+C_d s + C_p}N_{T}(s)\\ &amp;+ \frac{- C_d}{Js^2+C_d s + C_p}N_{V}(s) + \frac{1}{Js^2+C_d s + C_p}N_{P}(s)
+\end{aligned}
+\tag{11}\]</span></span></p>
+<p>La <a href="#eq-10" class="quarto-xref">Ecuación&nbsp;10</a> describe las contribuciones de la referencia a la posición angular, así como de los tres términos de ruido. Además, al cumplirse <span class="math inline">\(\dot{\Theta}(s)=s\Theta(s)\)</span>, se obtiene la ecuación de la velocidad angular en función de sus contribuciones.</p>
+<p><span id="eq-H_full_vel"><span class="math display">\[
+\begin{aligned}
+\dot{\Theta}(s) = &amp;\frac{C_p s}{Js^2+C_d s + C_p} \Theta_{ref}(s) + \frac{- C_p s}{Js^2+C_d s + C_p}N_{T}(s)\\ &amp;+ \frac{- C_d s}{Js^2+C_d s + C_p}N_{V}(s) + \frac{s}{Js^2+C_d s + C_p}N_{P}(s)
+\end{aligned}
+\tag{12}\]</span></span></p>
+<p>Aplicando el principio de superposición, la <a href="#eq-H_full_pos" class="quarto-xref">Ecuación&nbsp;11</a> y <a href="#eq-H_full_vel" class="quarto-xref">Ecuación&nbsp;12</a> se pueden expresar de la siguiente forma</p>
+<p><span id="eq-H_redux"><span class="math display">\[
+\begin{aligned}
+\Theta(s) = &amp;H_{0}(s) \Theta_{ref}(s) + H_{T0}(s)N_{T}(s) + H_{V0}(s)N_{V}(s) + H_{P0}(s)N_{P}(s)\\[1em]
+\dot{\Theta}(s) = &amp;H_{1}(s) \Theta_{ref}(s) + H_{T1}(s)N_{T}(s) + H_{V1}(s)N_{V}(s) + H_{P1}(s)N_{P}(s)
+\end{aligned}
+\tag{13}\]</span></span></p>
+<!--#
+$$
+\begin{aligned}
+H_T(s) &= \left.\frac{\Theta(s)}{N_T(s)}\right|_{
+  \begin{aligned}\Theta_{ref}&=0\\ N_V&=0\\ N_P &=0\end{aligned}} =  \frac{- C_p}{Js^2+C_d s + C_p}\\
+H_V(s) &= \left.\frac{\Theta(s)}{N_T(s)}\right|_{
+  \begin{aligned}\Theta_{ref}&=0\\ N_T&=0\\ N_P &=0\end{aligned}} =  \frac{- C_d}{Js^2+C_d s + C_p}\\
+H_P(s) &= \left.\frac{\Theta(s)}{N_T(s)}\right|_{
+  \begin{aligned}\Theta_{ref}&=0\\ N_T&=0\\ N_V &=0\end{aligned}} =  \frac{1}{Js^2+C_d s + C_p}\\
+\end{aligned}
+$${#eq-H_redux_pos}
+-->
+<p>En donde las transferencias del ruido son <span id="eq-Hs"><span class="math display">\[
+\begin{matrix}
+H_{T0}(s) = \dfrac{- C_p}{Js^2+C_d s + C_p}&amp;
+H_{T1}(s) = \dfrac{- C_p s}{Js^2+C_d s + C_p}\\
+H_{V0}(s) = \dfrac{- C_d}{Js^2+C_d s + C_p}&amp;
+H_{V1}(s) = \dfrac{- C_d s}{Js^2+C_d s + C_p}\\
+H_{P0}(s) = \dfrac{1}{Js^2+C_d s + C_p}&amp;
+H_{P1}(s) = \dfrac{s}{Js^2+C_d s + C_p}\\
+\end{matrix}
+\tag{14}\]</span></span></p>
+<div id="d8a8ad0f" class="cell" data-execution_count="2">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> scipy.signal <span class="im">as</span> signal</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>H_t0 <span class="op">=</span> signal.TransferFunction([<span class="op">-</span>C_p], [J, C_d, C_p])</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>H_v0 <span class="op">=</span> signal.TransferFunction([<span class="op">-</span>C_d], [J, C_d, C_p])</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>H_p0 <span class="op">=</span> signal.TransferFunction([<span class="dv">1</span>], [J, C_d, C_p])</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>H_t1 <span class="op">=</span> signal.TransferFunction([<span class="op">-</span>C_p, <span class="dv">0</span>], [J, C_d, C_p])</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>H_v1 <span class="op">=</span> signal.TransferFunction([<span class="op">-</span>C_d, <span class="dv">0</span>], [J, C_d, C_p])</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>H_p1 <span class="op">=</span> signal.TransferFunction([<span class="dv">1</span>, <span class="dv">0</span>], [J, C_d, C_p])</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="respuesta-al-impulso" class="level2">
+<h2 class="anchored" data-anchor-id="respuesta-al-impulso">Respuesta al Impulso</h2>
+<p>Se procede a analizar las respuestas al impulso del sistema, dadas por</p>
 <p><span class="math display">\[
-C_d = 2\xi\omega_n J = 140 \text{ kg m²/s}
+h_i(t) = \mathcal{L}^{-1}\left\{H_i(s)\right\}
 \]</span></p>
+<p>Estas se pueden calcular analíticamente, o bien utilizando <code>scipy.signal.impulse</code>. Los resultados se presentan en la <a href="#fig-h0" class="quarto-xref">Figura&nbsp;4</a> y la <a href="#fig-h1" class="quarto-xref">Figura&nbsp;5</a>.</p>
+<div id="cell-fig-h0" class="cell" data-execution_count="3">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>sns.set_theme()</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>T, h_t0 <span class="op">=</span> signal.impulse(H_t0)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>T, h_v0 <span class="op">=</span> signal.impulse(H_v0)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>T, h_p0 <span class="op">=</span> signal.impulse(H_p0)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">3</span>,<span class="dv">1</span>, sharex<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].plot(T, h_t0)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].plot(T, h_v0)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].plot(T, h_p0)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="vs">r'Respuestas al impulso del sistema sobre $\theta$'</span>)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_ylabel(<span class="vs">r'$h_</span><span class="sc">{T0}</span><span class="vs">$'</span>)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_ylabel(<span class="vs">r'$h_</span><span class="sc">{V0}</span><span class="vs">$'</span>)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_ylabel(<span class="vs">r'$h_</span><span class="sc">{P0}</span><span class="vs">$'</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_xlabel(<span class="vs">r'$t$ [s]'</span>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> [<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">2</span>]:</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  ax[i].set_xlim(<span class="bu">min</span>(T), <span class="bu">max</span>(T))</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  ax[i].grid(<span class="va">True</span>)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-h0" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-h0-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="TP1_Propagación_Ruido_LTI_files/figure-html/fig-h0-output-1.png" width="654" height="472" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-h0-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figura&nbsp;4: Respuestas al impulso de las fuentes de ruido sobre la posición angular.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div id="cell-fig-h1" class="cell" data-execution_count="4">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>T, h_t1 <span class="op">=</span> signal.impulse(H_t1)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>T, h_v1 <span class="op">=</span> signal.impulse(H_v1)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>T, h_p1 <span class="op">=</span> signal.impulse(H_p1)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">3</span>,<span class="dv">1</span>, sharex<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].plot(T, h_t1)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].plot(T, h_v1)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].plot(T, h_p1)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="vs">r'Respuestas al impulso del sistema sobre $\dot\theta$'</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_ylabel(<span class="vs">r'$h_</span><span class="sc">{V1}</span><span class="vs">$'</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_ylabel(<span class="vs">r'$h_</span><span class="sc">{V1}</span><span class="vs">$'</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_ylabel(<span class="vs">r'$h_</span><span class="sc">{V1}</span><span class="vs">$'</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_xlabel(<span class="vs">r'$t$ [s]'</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> [<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">2</span>]:</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  ax[i].set_xlim(<span class="bu">min</span>(T), <span class="bu">max</span>(T))</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  ax[i].grid(<span class="va">True</span>)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-h1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-h1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="TP1_Propagación_Ruido_LTI_files/figure-html/fig-h1-output-1.png" width="654" height="472" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-h1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figura&nbsp;5: Respuestas al impulso de las fuentes de ruido sobre la velocidad angular.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Los resultados presentados en las figuras indican un estado transitorio de aproximadamente <span class="math inline">\(50\)</span> s, lo cual da una noción de la escala temporal del sistema. Este resultado motiva la elección de un tiempo de muestreo de <span class="math inline">\(T_s = 10\)</span> ms para realizar una simulación digital del sistema.</p>
+</section>
+<section id="análisis-de-la-respuesta-del-sistema-ante-ruido-blanco" class="level2">
+<h2 class="anchored" data-anchor-id="análisis-de-la-respuesta-del-sistema-ante-ruido-blanco">Análisis de la respuesta del sistema ante ruido blanco</h2>
+<p>A partir de los gráficos de las respuestas al impulso presentados en la <a href="#fig-h0" class="quarto-xref">Figura&nbsp;4</a> y <a href="#fig-h1" class="quarto-xref">Figura&nbsp;5</a>, así como las expresiones de las transferencias presentadas en la <a href="#eq-H_redux" class="quarto-xref">Ecuación&nbsp;13</a>, se determina que la respuesta del sistema ante las fuentes de ruido solo varía por un factor multiplicativo. Por este motivo se procede únicamente a analizar la respuesta al ruido de torque, sabiendo que el comportamiento ante el ruido de posición y el ruido de velocidad será similar.</p>
+<section id="simulación-temporal" class="level3">
+<h3 class="anchored" data-anchor-id="simulación-temporal">Simulación temporal</h3>
+<p>Para simular la respuesta del sistema ante ruido blanco, se define una señal de entrada <span class="math inline">\(n_T[t]\)</span> de <span class="math inline">\(N\)</span> muestras independientes idénticamente distribuidas, definida por</p>
+<p><span class="math display">\[
+  \mathbf{n_T} \sim \mathcal{N}(\mathbf 0_N, \sigma^2 I_N)
+\]</span></p>
+<p>A partir de esta señal se simulan las salidas, <span class="math inline">\(\theta[t]\)</span> y <span class="math inline">\(\dot\theta[t]\)</span>, utilizando <code>scipy.signal.lsim</code>.</p>
+<div id="cell-fig-ruido" class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>t_s <span class="op">=</span> <span class="fl">1e-2</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>var_n <span class="op">=</span> <span class="dv">100</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">400000</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> np.linspace(<span class="dv">0</span>, N<span class="op">*</span>t_s, N)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>n_t <span class="op">=</span> np.random.normal(<span class="dv">0</span>, np.sqrt(var_n), N)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>T, pos, _ <span class="op">=</span> signal.lsim(H_t0, n_t, t)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>T, vel, _ <span class="op">=</span> signal.lsim(H_t1, n_t, t)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">3</span>,<span class="dv">1</span>, sharex<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">'Respuestas al impulso del sistema'</span>, fontsize<span class="op">=</span><span class="dv">16</span>)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].plot(T, n_t)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].plot(T, pos)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].plot(T, vel)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_ylabel(<span class="vs">r'$n_T$'</span>)</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_ylabel(<span class="vs">r'$\theta$'</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_ylabel(<span class="vs">r'$\dot\theta$'</span>)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_xlabel(<span class="vs">r'$t$ [s]'</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> [<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">2</span>]:</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>  ax[i].set_xlim(<span class="dv">0</span>,<span class="dv">800</span>)</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  ax[i].grid(<span class="va">True</span>)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-ruido" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ruido-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="TP1_Propagación_Ruido_LTI_files/figure-html/fig-ruido-output-1.png" width="655" height="472" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ruido-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figura&nbsp;6: Respuestas del sistema ante una entrada de ruido blanco
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Se calcula el valor cuadrático medio empírico de las señales con la fórumla</p>
+<p><span class="math display">\[
+  \text{MSV}(\mathbf{x}) = \frac{1}{N}\sum_{t=0}^{N-1}x^2[t]
+\]</span></p>
+<p>Los resultados para la realización vista en la <a href="#fig-ruido" class="quarto-xref">Figura&nbsp;6</a> se presentan a continuación</p>
+<div id="3c16c1b4" class="cell" data-execution_count="6">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> round_sig_figs(value, sig_figs):</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> value <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">0</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">round</span>(value, sig_figs <span class="op">-</span> <span class="bu">int</span>(np.floor(np.log10(<span class="bu">abs</span>(value)))) <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>msv_ruido <span class="op">=</span> np.mean([n<span class="op">**</span><span class="dv">2</span> <span class="cf">for</span> n <span class="kw">in</span> n_t])</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>msv_pos <span class="op">=</span> np.mean([n<span class="op">**</span><span class="dv">2</span> <span class="cf">for</span> n <span class="kw">in</span> pos])</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>msv_vel <span class="op">=</span> np.mean([n<span class="op">**</span><span class="dv">2</span> <span class="cf">for</span> n <span class="kw">in</span> vel])</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Valor cuadrático medio del ruido de entrada:</span><span class="ch">\t</span><span class="ss"> </span><span class="sc">{</span>round_sig_figs(msv_ruido, <span class="dv">3</span>)<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Valor cuadrático medio de la posición angular:</span><span class="ch">\t</span><span class="ss"> </span><span class="sc">{</span>round_sig_figs(msv_pos, <span class="dv">3</span>)<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Valor cuadrático medio de la velocidad angular:</span><span class="ch">\t</span><span class="ss"> </span><span class="sc">{</span>round_sig_figs(msv_vel, <span class="dv">3</span>)<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Valor cuadrático medio del ruido de entrada:     100.0
+Valor cuadrático medio de la posición angular:   0.0347
+Valor cuadrático medio de la velocidad angular:  0.000345</code></pre>
+</div>
+</div>
+</section>
+<section id="análisis-en-el-dominio-de-la-frecuencia" class="level3">
+<h3 class="anchored" data-anchor-id="análisis-en-el-dominio-de-la-frecuencia">Análisis en el dominio de la frecuencia</h3>
+<p>Se procede a calcular la distribución espectral de potencia de <span class="math inline">\(\theta[t]\)</span> y <span class="math inline">\(\dot\theta[t]\)</span> ante la entrada <span class="math inline">\(n_T[t]\)</span>, a partir de la expresión teórica</p>
+<p><span class="math display">\[
+\begin{aligned}
+S_\theta(f) &amp;= \left| H_{T0}(j2\pi f) \right|^2 S_{N_T}(f)\\
+S_{\dot\theta}(f) &amp;= \left| H_{T1}(j2\pi f) \right|^2 S_{N_T}(f)
+\end{aligned}
+\]</span></p>
+<p>En donde <span class="math inline">\(S_{n_T}\)</span> es la distribución espectral de potencia de ruido blanco con varianza <span class="math inline">\(\sigma^2\)</span> muestreado a una frecuencia <span class="math inline">\(f_s = 1/T_S\)</span></p>
+<p><span class="math display">\[
+  S_{N_T}(f) = \frac{\sigma^2}{f_S} \Pi\left(\frac{f}{f_S}\right)
+\]</span></p>
+<div id="cell-fig-dep" class="cell" data-execution_count="7">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>f <span class="op">=</span> np.fft.fftfreq(N, t_s)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>psd_N <span class="op">=</span> np.array([var_n<span class="op">*</span>t_s <span class="cf">for</span> x <span class="kw">in</span> f])</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> H_T0fun(f):</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    w <span class="op">=</span> <span class="dv">2</span><span class="op">*</span>np.pi<span class="op">*</span>f</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">-</span>C_p<span class="op">/</span>(J<span class="op">*</span>(<span class="ot">1j</span><span class="op">*</span>w)<span class="op">**</span><span class="dv">2</span><span class="op">+</span>C_d<span class="op">*</span><span class="ot">1j</span><span class="op">*</span>w<span class="op">+</span>C_p)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> H_T1fun(f):</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    w <span class="op">=</span> <span class="dv">2</span><span class="op">*</span>np.pi<span class="op">*</span>f</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">-</span>C_p<span class="op">*</span>(<span class="ot">1j</span><span class="op">*</span>w)<span class="op">/</span>(J<span class="op">*</span>(<span class="ot">1j</span><span class="op">*</span>w)<span class="op">**</span><span class="dv">2</span><span class="op">+</span>C_d<span class="op">*</span><span class="ot">1j</span><span class="op">*</span>w<span class="op">+</span>C_p)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>S_0 <span class="op">=</span> np.array([np.<span class="bu">abs</span>(H_T0fun(fi))<span class="op">**</span><span class="dv">2</span> <span class="cf">for</span> fi <span class="kw">in</span> f])<span class="op">*</span>psd_N</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>S_1 <span class="op">=</span> np.array([np.<span class="bu">abs</span>(H_T1fun(fi))<span class="op">**</span><span class="dv">2</span> <span class="cf">for</span> fi <span class="kw">in</span> f])<span class="op">*</span>psd_N</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">3</span>,<span class="dv">1</span>, sharex<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].loglog(f[<span class="dv">0</span>:N<span class="op">//</span><span class="dv">2</span>], psd_N[<span class="dv">0</span>:N<span class="op">//</span><span class="dv">2</span>])</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].loglog(f[<span class="dv">0</span>:N<span class="op">//</span><span class="dv">2</span>], S_0[<span class="dv">0</span>:N<span class="op">//</span><span class="dv">2</span>])</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].loglog(f[<span class="dv">0</span>:N<span class="op">//</span><span class="dv">2</span>], S_1[<span class="dv">0</span>:N<span class="op">//</span><span class="dv">2</span>])</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">'Distribución Espectral de Potencia'</span>)</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_ylabel(<span class="vs">r'$S_</span><span class="sc">{N_T}</span><span class="vs">$'</span>)</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_ylabel(<span class="vs">r'$S_{\Theta}$'</span>)</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_ylabel(<span class="vs">r'$S_{\dot\Theta}$'</span>)</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">2</span>].set_xlabel(<span class="vs">r'$f$ [Hz]'</span>)</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> [<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">2</span>]:</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>    ax[i].grid(<span class="va">True</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div id="fig-dep" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-dep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="TP1_Propagación_Ruido_LTI_files/figure-html/fig-dep-output-1.png" width="615" height="488" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-dep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figura&nbsp;7: Respuestas del sistema ante una entrada de ruido blanco
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>La <a href="#fig-dep" class="quarto-xref">Figura&nbsp;7</a> indica que <span class="math inline">\(H_{T0}\)</span> actúa como un filtro pasa bajo, mientras que <span class="math inline">\(H_{T1}\)</span> actúa como un filtro pasa banda. Esto es consistente con un análisis cualitativo de las formas de onda presentadas en la <a href="#fig-ruido" class="quarto-xref">Figura&nbsp;6</a>.</p>
+<p>Finalmente, se calcula el valor cuadrático medio teórico de las señales, dado por</p>
+<p><span class="math display">\[
+  \text{MSV}(\mathbf{x}) = \int_{-\infty}^{\infty} S_X(f) df
+\]</span></p>
+<p>Los resultados utilizando integración numérica se presentan a continuación.</p>
+<div id="e3352c9d" class="cell" data-execution_count="8">
+<details class="code-fold">
+<summary>Código</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>f <span class="op">=</span> np.fft.fftshift(f)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>S_0 <span class="op">=</span> np.fft.fftshift(S_0)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>S_1 <span class="op">=</span> np.fft.fftshift(S_1)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>msv_ruido <span class="op">=</span> np.trapezoid(psd_N, f)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>msv_pos <span class="op">=</span> np.trapezoid(S_0, f)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>msv_vel <span class="op">=</span> np.trapezoid(S_1, f)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Valor cuadrático medio del ruido de entrada:</span><span class="ch">\t</span><span class="ss"> </span><span class="sc">{</span>round_sig_figs(msv_ruido, <span class="dv">3</span>)<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Valor cuadrático medio de la posición angular:</span><span class="ch">\t</span><span class="ss"> </span><span class="sc">{</span>round_sig_figs(msv_pos, <span class="dv">3</span>)<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Valor cuadrático medio de la velocidad angular:</span><span class="ch">\t</span><span class="ss"> </span><span class="sc">{</span>round_sig_figs(msv_vel, <span class="dv">3</span>)<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Valor cuadrático medio del ruido de entrada:     100.0
+Valor cuadrático medio de la posición angular:   0.0357
+Valor cuadrático medio de la velocidad angular:  0.000357</code></pre>
+</div>
+</div>
+</section>
+</section>
 
 </main>
 <!-- /main column -->
