@@ -411,3 +411,6 @@ print(f"Valor cuadrático medio del ruido de entrada:\t {round_sig_figs(msv_ruid
 print(f"Valor cuadrático medio de la posición angular:\t {round_sig_figs(msv_pos, 3)}")
 print(f"Valor cuadrático medio de la velocidad angular:\t {round_sig_figs(msv_vel, 3)}")
 ```
+
+## Conclusiones
+
