@@ -29,11 +29,11 @@ jupyter: python3
 
 Se analizará un sistema de control de la orientación de un satélite tal como es representado en la @fig-1.
 
-![Diagrama](Images/fig1.svg){#fig-1}
+![Esquema del sistema.](Images/fig1.svg){#fig-1}
 
 El sistema de control se representa como diagrama de bloques como se ve en la @fig-2.
 
-![Diagrama](Images/fig2.svg){#fig-2}
+![Diagrama en bloques del sistema sin ruido.](Images/fig2.svg){#fig-2}
 
 En donde $\theta_{ref}$ es la entrada, y $\theta$ la salida. Para encontrar la función de transferencia se plantean las ecuaciones
 
@@ -78,6 +78,7 @@ Si se consideran los valores dados en la tabla
 | $J$ | 1000 [kg m²] |
 | $\omega_n$ | 0,1 [rad/s] |
 | $\xi$ | 0,7 |
+: Datos del problema {#tbl-1}
 
 Se obtienen los valores de $C_d$ y $C_p$,
 
@@ -85,6 +86,7 @@ Se obtienen los valores de $C_d$ y $C_p$,
 | :-: | :-: | :-: |
 | $C_p$ | $\omega_n^2J$ | 10 [kg m²/s²] |
 | $C_d$ | $2\xi\omega_n J$ | 140 [kg m²/s] |
+: Parámetros del sistema calculados a partir de los datos del problema {#tbl-2}
 
 
 ```{python}
@@ -106,7 +108,7 @@ Al considerar las fuentes de ruido que alejan al comportamiento del sistema repr
 
 se obtiene el diagrama en bloques representado en la @fig-3.
 
-![Diagrama](Images/fig3.svg){#fig-3}
+![Diagrama de bloques del sistema considerando fuentes de ruido.](Images/fig3.svg){#fig-3}
 
 Los ruidos se representan como ruido coloreado con frecuencia de corte $\omega_C$, y se expresan de la siguiente forma
 
@@ -299,7 +301,7 @@ T, pos, _ = signal.lsim(H_t0, n_t, t)
 T, vel, _ = signal.lsim(H_t1, n_t, t)
 
 fig, ax = plt.subplots(3,1, sharex=True)
-fig.suptitle('Respuestas al impulso del sistema', fontsize=16)
+fig.suptitle('Respuestas del sistema ante una entrada de ruido blanco', fontsize=16)
 ax[0].plot(T, n_t)
 ax[1].plot(T, pos)
 ax[2].plot(T, vel)
@@ -359,7 +361,7 @@ $$
 $$
 
 ```{python}
-#| fig-cap: Respuestas del sistema ante una entrada de ruido blanco
+#| fig-cap: Distribución espectral de potencia de las salidas del sistema ante una entrada de ruido blanco
 #| label: fig-dep
 
 f = np.fft.fftfreq(N, t_s)
@@ -389,7 +391,7 @@ for i in [0,1,2]:
     ax[i].grid(True)
 ```
 
-La @fig-dep indica que $H_{T0}$ actúa como un filtro pasa bajo, mientras que $H_{T1}$ actúa como un filtro pasa banda. Esto es consistente con un análisis cualitativo de las formas de onda presentadas en la @fig-ruido. 
+La @fig-dep indica que $H_{T0}$ actúa como un filtro pasa bajo, mientras que $H_{T1}$ actúa como un filtro pasa banda. Esto es consistente con un análisis cualitativo de las formas de onda presentadas en la @fig-ruido, así como de las tranferencias presentadas en la @eq-H_redux.
 
 Finalmente, se calcula el valor cuadrático medio teórico de las señales, dado por
 
@@ -411,6 +413,4 @@ print(f"Valor cuadrático medio del ruido de entrada:\t {round_sig_figs(msv_ruid
 print(f"Valor cuadrático medio de la posición angular:\t {round_sig_figs(msv_pos, 3)}")
 print(f"Valor cuadrático medio de la velocidad angular:\t {round_sig_figs(msv_vel, 3)}")
 ```
-
-## Conclusiones
 
