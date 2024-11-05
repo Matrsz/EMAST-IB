@@ -1,0 +1,413 @@
+---
+title: TP2 - Filtros de Kalman
+subtitle: Elementos de Matemáticas Aplicadas para Aplicaciones Tecnológicas
+author: Matías Roqueta
+institute: Instituto Balseiro
+lang: es
+biblio-style: ieee
+highlight-style: arrow
+format: 
+#  pdf:
+#    pdf-engine: pdflatex
+#    cite-method: biblatex
+#    classoption: twocolumn
+#    geometry:
+#      - top=20mm
+#      - bottom=20mm
+#      - left=12mm
+#      - right=12mm
+#    latex-auto-install: true
+  html: 
+    code-fold: true
+    theme: flatly
+    fig-align: center
+    toc: true
+jupyter: julia-1.10
+---
+
+## Descripción del problema
+
+Se implementará un filtro de Kalman para fusionar los datos de sensores presentes en un vehículo para estimar la posición y orientación del mismo en dos dimensiones. Un diagrama del mismo se presenta en la @fig-1. 
+
+![Esquema del sistema.](Images/movil.svg){#fig-1}
+
+En la figura se representan los ejes $x$ e $y$, llamados el sistema de referencia inercial. Se repesenta además el eje $x_b$, el cual junto con un eje $y_b$ ortogonal al mismo forman el sistema de referencia del móvil, llamado _body_. El filtro de Kalman estimará la posición del móvil en el sistema de referencia intercial, $x_{est},\, y_{est}$ así como la orientación del mismo, dada por el ángulo $\theta$.
+
+Los instrumentos disponibles para la estimación de la posición son los siguientes.
+
+- Unidad de Medición Inercial (IMU): Consiste en un giróscopo y un acelerómetro los cuales miden a una tasa $f_s$.
+  - Acelerómetro: Mide la aceleración lineal del móvil en el sistema _body_, $u^{x_b} = \ddot{x}_b$ y $u^{y_b} = \ddot{y}_b$.
+  - Giróscopo: Mide la velocidad angular del móvil, $u^{\theta} = \dot{\theta}$.
+- GPS: Mide la posición del móvil en el sistema de referencia inercial a una tasa $f_s'$.
+- Magnetómetro: Por medio de mediciones del campo magnético terrestre calcula la orientación del móvil, también a tasa $f_s'$. 
+
+## Error de los instrumentos
+
+Para cada dimensión de medición se considera su correspondiente error 
+
+```{julia}
+#| output: false
+using LinearAlgebra
+using Distributions
+using PlotThemes
+using ColorSchemes
+
+theme(:wong2)
+
+## Parametros de error instrumentos
+
+Δt = 0.1
+
+fs = 10
+fs2 = 1
+PSD_a = 80*10*1e-6
+PSD_g = 0.03*π/180
+PSD_m = 100e-6*1e-4
+B_T = 25358e-9
+
+err_IMU_x = PSD_a*sqrt(fs)
+err_IMU_θ = PSD_g*sqrt(fs)
+
+err_GPS = 2.5
+err_MAG = PSD_m*sqrt(fs2)/B_T
+
+Q = [err_IMU_x^2 0 0; 0 err_IMU_x^2 0; 0 0 err_IMU_θ^2]
+
+R = [err_GPS^2 0 0; 0 err_GPS^2 0; 0 0 err_MAG^2]
+
+dist_ruido_IMU = MvNormal([0,0,0], Q)
+dist_ruido_GPS = MvNormal([0,0,0], R)
+```
+
+
+# Filtro de Kalman
+
+El filtro de Kalman se hará sobre el estimador del estado de posición, velocidad, y orientación del móvil en el sistema de referencia inercial
+
+$$
+\mathbf{\hat{x}}_k  = \begin{bmatrix}\hat{x}_k \\ \hat{\dot{x}}_k \\ \hat{y}_k \\ \hat{\dot{y}}_k \\ \hat{\theta}_k \end{bmatrix}
+$$
+
+## Medición del IMU
+
+A cada instante de muestreo del IMU se obtiene un vector de mediciones $\mathbf{\overline{u}}_k$, el cual se define como su valor real $\mathbf{u}_k$ más su error $\mathbf{w'}_k$
+
+$$
+  \mathbf{\overline{u}}_k = 
+  \mathbf{u}_k + \mathbf{w}_k' = \begin{bmatrix}u_k^{x_b} \\ u_k^{y_b} \\
+  u_k^{\theta} \end{bmatrix} + \mathbf{w}_k'
+$$
+
+Los errores de medición se consideran independientes, por lo que la matriz de covarianza de $\mathbf{w}'$ es dada por
+
+$$
+  Q = \begin{bmatrix}
+    (\sigma^{x_b})^2 & 0 & 0\\
+    0 & (\sigma^{x_b})^2 & 0\\
+    0 & 0 & (\sigma^\theta)^2\\
+  \end{bmatrix}
+$$
+
+
+## Medición del GPS/Magnetómetro
+
+Cuando $k$ corresponde a un instante de muestreo del GPS, se obtiene un vector de mediciones $\mathbf{\overline{z}}_k$, el cual se define como su valor real $\mathbf{z}_k$ más su error $\mathbf{v}_k$
+
+$$
+  \mathbf{\overline{z}}_k = 
+  \mathbf{z}_k + \mathbf{v}_k = \begin{bmatrix}z_k^{x} \\ z_k^{y} \\
+  z_k^{\theta} \end{bmatrix} + \mathbf{v}_k
+$$
+
+En ausencia de aceleración, la evolución del estado en un tiempo $\Delta t$ seguiría un movimiento rectilíneo uniforme, dado por
+
+$$
+\mathbf{x}_k = \begin{bmatrix}x_k \\ \dot{x}_k \\ y_k \\ \dot{y}_k \\ \theta_k \end{bmatrix} = 
+\begin{bmatrix}
+1 & \Delta t & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 & 0 \\
+0 & 0 & 1 & \Delta t & 0 \\
+0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}
+\begin{bmatrix}x_{k-1} \\ \dot{x}_{k-1} \\ y_{k-1} \\ \dot{y}_{k-1} \\ \theta_{k-1} \end{bmatrix} 
+$$
+
+## Modelo de actualización de estado
+
+La actualización del estado se hace en función de las mediciones de la IMU, que informan la aceleración del móvil en el sistema de referencia _body_, estas se modelan como el vector de medición $\mathbf u$ más el vector de error $\mathbf w'$
+
+
+
+Estas aceleraciones se transladan al sistema de referencia inercial y se utilizan para realizar la actualización por modelo del filtro de Kalman, dada por medio de la ecuación 
+
+$$
+  \mathbf{\hat{x}}_k = A\mathbf{\hat{x}}_{k-1} + B_{k-1} \mathbf{u}_{k-1} + \mathbf{w}_{k-1}
+$$
+
+En donde la matriz $B_{k-1}$ que obtiene la actualización del estado en el sistema inercial $\mathbf{x}$ en función de las mediciones de aceleración en el sistema _body_ es dada por
+
+$$
+  B_{k-1} = \begin{bmatrix} \frac 1 2 \Delta t^2 \cos(\theta_{k-1}) & 
+                    - \frac 1 2 \Delta t^2 \sin(\theta_{k-1}) &
+                      0 \\
+                      \Delta t \cos(\theta_{k-1}) & 
+                    - \Delta t \sin(\theta_{k-1}) &
+                      0 \\
+                      \frac 1 2 \Delta t^2 \sin(\theta_{k-1}) & 
+                      \frac 1 2 \Delta t^2 \cos(\theta_{k-1}) &
+                      0 \\
+                      \Delta t \sin(\theta_{k-1}) & 
+                      \Delta t \cos(\theta_{k-1}) &
+                      0 \\
+                      0 & 0 & \Delta t
+  \end{bmatrix}
+$$
+
+Y el ruido es similarmente transformado, obteniendo $\mathbf{w}_{k-1} = B \mathbf{w}_{k-1}'$. La matriz de covarianza que resulta de la transformación es dada por
+
+$$
+  Q_k = B Q B^T
+$$
+
+
+## Modelo de actualización por medición
+
+
+
+```{julia}
+#| output: false
+
+A = [1 Δt 0 0 0;
+     0 1 0 0 0;
+     0 0 1 Δt 0;
+     0 0 0 1 0;
+     0 0 0 0 1]
+
+function B_matrix(θ)
+    return [Δt^2*cos(θ)/2 -Δt^2*sin(θ)/2 0;
+    Δt*cos(θ) -Δt*sin(θ) 0;
+    Δt^2*sin(θ)/2 Δt^2*cos(θ)/2 0;
+    Δt*sin(θ) Δt*cos(θ) 0;
+    0 0 Δt]
+end
+
+H = [1 0 0 0 0;
+     0 0 1 0 0;
+     0 0 0 0 1]
+```
+
+# Implementación del algoritmo de estimación
+
+## Inicialización
+
+```{julia}
+function kalman_initialize(t, tasa_GPS, z)
+    N = length(t)
+    x = zeros(5, N)
+    x[1:2:5,1] = z[:,1]
+    P = zeros(5, 5, N)
+    P[:,:,1] = diagm([err_GPS^2,(err_GPS*fs2)^2,err_GPS^2,(err_GPS*fs2)^2,2pi])
+    K = zeros(5, 3, N÷tasa_GPS)
+    return x, P, K
+end
+```
+
+## Predicción
+
+En cada instante de muestreo del IMU se realiza la etapa de predicción
+
+- Estimación _a priori_: $\mathbf{\hat{x}}_k^{-} = \mathbf{\hat{x}}_{k-1} + B_{k-1} \mathbf{\overline{u}}_{k-1}$
+- Covarianza _a priori_: $P_k^{-} = A P_{k-1}A^T + Q_k$
+
+```{julia}
+function kalman_predict(x, u, P)
+    B = B_matrix(x[5])
+    x_est = A*x + B*u
+    P_est = A*P*A' + B*Q*B'
+    return x_est, P_est
+end
+```
+
+## Corrección
+
+En cada instante de muestreo del GPS/magnetómetro, se aplica una corrección por medición al estimador.
+
+- Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
+- Estimador _a posteriori_: $\mathbf{\hat{x}}_k^{+} = \mathbf{\hat{x}}_k^{-} + K_k (\mathbf{\overline{z}}_k-H\mathbf{\hat{x}}_k^{-})$
+- Covarianza _a posteriori_: $P_k^{+} = (I-K_k H)P_k^{-}$
+
+```{julia}
+function kalman_correct(x_prior, z, P_prior)
+    K = P_prior*H'*inv(H*P_prior*H'+R)
+    x_est = x_prior + K*(z-H*x_prior)
+    P_est = (I-K*H)*P_prior
+    return x_est, P_est, K
+end
+```
+
+```{julia}
+function kalman(t, tasa_GPS, u, z)
+    x, P, K = kalman_initialize(t, tasa_GPS, z)
+    for k in 2:length(t)
+        x_est, P_est = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1])
+        if k%tasa_GPS == 0
+            x_est, P_est, K_k = kalman_correct(x_est, z[:,k], P_est)
+            K[:,:,k÷tasa_GPS] = K_k
+        end
+        x[:,k] = x_est
+        P[:,:,k] = P_est
+    end
+    return x, P, K
+end
+```
+
+# Estimación de diferentes trayectorias
+
+En todas las trayectorias, los ruidos de los instrumentos se modelan como variables aleatorias gaussianas de media $0$, con muestras independientes e idénticamente distribuidas.
+
+$$
+  \mathbf{w}'_k \sim \mathcal{N}\left[\mathbf{0}, Q\right] \qquad   \mathbf{v}_k \sim \mathcal{N}\left[\mathbf{0}, R\right]
+$$
+
+```{julia}
+#| output: false
+T = 500
+t = 0:0.1:T
+
+u_noise = hcat([rand(dist_ruido_IMU) for ti in t]...)
+z_noise = hcat([rand(dist_ruido_GPS) for ti in t]...)
+```
+
+## Móvil estático
+
+$$
+    \mathbf{\overline{u}}_k = \begin{bmatrix} 0 \\ 0 \\
+  0 \end{bmatrix} + \mathbf{w}_k'
+$$
+
+$$
+    \mathbf{\overline{z}}_k = \begin{bmatrix} 0 \\ 0 \\
+  0 \end{bmatrix} + \mathbf{v}_k
+$$
+
+```{julia}
+#| output: false
+function estatico_IMU()
+    return [0,0,0]
+end
+function estatico_GPS()
+    return [0,0,0]
+end
+
+u_true = hcat([estatico_IMU() for ti in t]...)
+z_true = hcat([estatico_GPS() for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+function trayectoria_xy(x, z_true)
+    p1 = plot(x[1,:], x[3,:], label="Estimación", xlabel="x", ylabel="y", aspect_ratio=:equal, title="Trayectoria XY")
+    plot!(p1, z_true[1,:], z_true[2,:], label="Trayectoria")
+    return p1
+end
+
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+function trayectoria_t(t, x, z_true)
+    p1 = plot(t, x[1,:], ylabel="x [m]", title="Trayectoria en función del tiempo")
+    plot!(p1, t, z_true[1,:])
+    p2 = plot(t, x[3,:], ylabel="y [m]")
+    plot!(p2, t, z_true[2,:])
+    p3 = plot(t, x[5,:] .% 2pi, ylabel="θ", xlabel="t [s]")
+    plot!(p3, t, z_true[3,:] .% 2pi)
+    return plot(p1,p2,p3, layout=(3,1), legend=false)
+end
+
+trayectoria_t(t, x, z_true)
+```
+
+## Movimiento rectilíneo uniformemente acelerado
+
+$$
+    \mathbf{\overline{u}}_k = \begin{bmatrix} a \\ 0 \\
+  0 \end{bmatrix} + \mathbf{w}_k'
+$$
+
+$$
+    \mathbf{\overline{z}}_k = \begin{bmatrix} \frac 1 2 a t_k^2 \cos(\theta)  \\ \frac 1 2 a t_k^2 \sin(\theta)  \\
+  \theta \end{bmatrix} + \mathbf{v}_k
+$$
+
+```{julia}
+#| output: false
+
+function mrua_IMU(a)
+    return [a,0,0]
+end
+function mrua_GPS(a, t, θ)
+    return [1/2 * a * t^2 * cos(θ), 1/2 * a* t^2 * sin(θ), θ]
+end
+
+u_true = hcat([mrua_IMU(5e-4) for ti in t]...)
+z_true = hcat([mrua_GPS(5e-4, ti, pi/4) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true)
+```
+
+## Movimiento circular uniforme 
+
+$$
+    \mathbf{\overline{u}}_k = \begin{bmatrix} 0 \\ \omega^2 r \\
+  \omega \end{bmatrix} + \mathbf{w}_k'
+$$
+
+$$
+    \mathbf{\overline{z}}_k = \begin{bmatrix} r \cos(\omega t_k)  \\ r \sin(\omega t_k)  \\
+  \omega t_k + \frac \pi 2 \end{bmatrix} + \mathbf{v}_k
+$$
+
+```{julia}
+#| output: false
+
+function circular_IMU(r, w, t)
+    return [0,w^2*r,w] 
+end
+
+function circular_GPS(r, w, t)
+    return [r*cos(w*t),r*sin(w*t),w*t+π/2] 
+end
+
+u_true = hcat([circular_IMU(20, 2*pi/T, ti) for ti in t]...)
+z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true)
+```

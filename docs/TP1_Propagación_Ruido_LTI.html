@@ -309,7 +309,7 @@ Tabla&nbsp;2: Parámetros del sistema calculados a partir de los datos del probl
 </div>
 </figure>
 </div>
-<div id="a866b264" class="cell" data-execution_count="1">
+<div id="aa9407ce" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Código</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>J <span class="op">=</span> <span class="dv">1000</span></span>
@@ -403,7 +403,7 @@ H_{P0}(s) = \dfrac{1}{Js^2+C_d s + C_p}&amp;
 H_{P1}(s) = \dfrac{s}{Js^2+C_d s + C_p}\\
 \end{matrix}
 \tag{14}\]</span></span></p>
-<div id="f8ee222f" class="cell" data-execution_count="2">
+<div id="b386fb6c" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Código</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> scipy.signal <span class="im">as</span> signal</span>
@@ -562,7 +562,7 @@ Figura&nbsp;6: Respuestas del sistema ante una entrada de ruido blanco
   \text{MSV}(\mathbf{x}) = \frac{1}{N}\sum_{t=0}^{N-1}x^2[t]
 \]</span></p>
 <p>Los resultados para la realización vista en la <a href="#fig-ruido" class="quarto-xref">Figura&nbsp;6</a> se presentan a continuación</p>
-<div id="2342868a" class="cell" data-execution_count="6">
+<div id="95df5d4b" class="cell" data-execution_count="6">
 <details class="code-fold">
 <summary>Código</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> round_sig_figs(value, sig_figs):</span>
@@ -582,8 +582,8 @@ Figura&nbsp;6: Respuestas del sistema ante una entrada de ruido blanco
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>Valor cuadrático medio del ruido de entrada:     99.9
-Valor cuadrático medio de la posición angular:   0.0359
-Valor cuadrático medio de la velocidad angular:  0.000372</code></pre>
+Valor cuadrático medio de la posición angular:   0.0417
+Valor cuadrático medio de la velocidad angular:  0.000401</code></pre>
 </div>
 </div>
 </section>
@@ -648,7 +648,7 @@ Figura&nbsp;7: Distribución espectral de potencia de las salidas del sistema an
   \text{MSV}(\mathbf{x}) = \int_{-\infty}^{\infty} S_X(f) df
 \]</span></p>
 <p>Los resultados utilizando integración numérica se presentan a continuación.</p>
-<div id="85d22962" class="cell" data-execution_count="8">
+<div id="557bd0e9" class="cell" data-execution_count="8">
 <details class="code-fold">
 <summary>Código</summary>
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>f <span class="op">=</span> np.fft.fftshift(f)</span>

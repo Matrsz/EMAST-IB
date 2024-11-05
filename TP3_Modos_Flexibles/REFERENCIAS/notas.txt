@@ -1,0 +1,5 @@
+En octave hay que instalar las librerías de control y signal:
+
+En linux:
+sudo apt-get install octave-control
+sudo apt-get install octave-signal
