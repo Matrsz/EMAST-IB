@@ -3,3 +3,6 @@
 
 ## Publicación TP1:
 - https://matrsz.github.io/EMAST-IB/TP1_Propagaci%C3%B3n_Ruido_LTI.html
+
+## Publicación TP2:
+- https://matrsz.github.io/EMAST-IB/TP2_Filtro_Kalman.html
