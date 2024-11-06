@@ -49,8 +49,8 @@ Para cada dimensión de medición se considera su correspondiente error
 #| output: false
 using LinearAlgebra
 using Distributions
+using Plots
 using PlotThemes
-using ColorSchemes
 
 theme(:wong2)
 
@@ -202,13 +202,13 @@ H = [1 0 0 0 0;
 ## Inicialización
 
 ```{julia}
-function kalman_initialize(t, tasa_GPS, z)
+function kalman_initialize(t, z)
     N = length(t)
     x = zeros(5, N)
     x[1:2:5,1] = z[:,1]
     P = zeros(5, 5, N)
     P[:,:,1] = diagm([err_GPS^2,(err_GPS*fs2)^2,err_GPS^2,(err_GPS*fs2)^2,2pi])
-    K = zeros(5, 3, N÷tasa_GPS)
+    K = zeros(5, 3, N)
     return x, P, K
 end
 ```
@@ -219,13 +219,15 @@ En cada instante de muestreo del IMU se realiza la etapa de predicción
 
 - Estimación _a priori_: $\mathbf{\hat{x}}_k^{-} = \mathbf{\hat{x}}_{k-1} + B_{k-1} \mathbf{\overline{u}}_{k-1}$
 - Covarianza _a priori_: $P_k^{-} = A P_{k-1}A^T + Q_k$
+- Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
 
 ```{julia}
 function kalman_predict(x, u, P)
     B = B_matrix(x[5])
     x_est = A*x + B*u
     P_est = A*P*A' + B*Q*B'
-    return x_est, P_est
+    K = P_est*H'*inv(H*P_est*H'+R)
+    return x_est, P_est, K
 end
 ```
 
@@ -233,30 +235,28 @@ end
 
 En cada instante de muestreo del GPS/magnetómetro, se aplica una corrección por medición al estimador.
 
-- Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
 - Estimador _a posteriori_: $\mathbf{\hat{x}}_k^{+} = \mathbf{\hat{x}}_k^{-} + K_k (\mathbf{\overline{z}}_k-H\mathbf{\hat{x}}_k^{-})$
 - Covarianza _a posteriori_: $P_k^{+} = (I-K_k H)P_k^{-}$
 
 ```{julia}
-function kalman_correct(x_prior, z, P_prior)
-    K = P_prior*H'*inv(H*P_prior*H'+R)
+function kalman_correct(x_prior, z, P_prior, K)
     x_est = x_prior + K*(z-H*x_prior)
     P_est = (I-K*H)*P_prior
-    return x_est, P_est, K
+    return x_est, P_est
 end
 ```
 
 ```{julia}
 function kalman(t, tasa_GPS, u, z)
-    x, P, K = kalman_initialize(t, tasa_GPS, z)
+    x, P, K = kalman_initialize(t, z)
     for k in 2:length(t)
-        x_est, P_est = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1])
+        x_est, P_est, K_k = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1])
         if k%tasa_GPS == 0
-            x_est, P_est, K_k = kalman_correct(x_est, z[:,k], P_est)
-            K[:,:,k÷tasa_GPS] = K_k
+            x_est, P_est = kalman_correct(x_est, z[:,k], P_est, K_k)
         end
         x[:,k] = x_est
         P[:,:,k] = P_est
+        K[:,:,k] = K_k
     end
     return x, P, K
 end
@@ -410,4 +410,184 @@ trayectoria_xy(x, z_true)
 
 ```{julia}
 trayectoria_t(t, x, z_true)
+```
+
+# Análisis de desempeño
+
+## Error de estimación
+
+Se procede a cuantificar el error de la estimación, el cual se define como la norma cuadrática de la distancia entre la estimación y el valor real
+
+$$
+\epsilon_k = \left\lVert\begin{bmatrix}\hat{x}_k\\\hat{y}_k\end{bmatrix}-
+                        \begin{bmatrix}z^x_k\\ z^y_k\end{bmatrix}\right\rVert^2
+$$
+
+```{julia}
+function error_cuadratico(x, z_true)
+    xs = [[x_i[1] x_i[3]] for x_i in eachcol(x)]
+    zs = [[z_i[1] z_i[2]] for z_i in eachcol(z_true)]
+    return [norm(x_i-z_i)^2 for (x_i, z_i) in zip(xs, zs)]
+end
+```
+
+Esto se compara con la incerteza del estimador, la cual se cuantifica con la traza de la matriz de covarianza $P$
+
+```{julia}
+function varianza_estimador(P)
+    return [tr(P[:,:,i]) for i in 1:size(P,3)]
+end
+```
+
+```{julia}
+function plot_error(t, x, z_true, P)
+    v = varianza_estimador(P)
+    e = error_cuadratico(x, z_true)
+    p1 = plot(t, v, ylim=[0, maximum(v)*1.1], ylabel="Incerteza")
+    p2 = plot(t, e, ylim=[0, maximum(e)*1.1], ylabel="Error cuadrático", xlabel="t")
+    return plot(p1, p2, layout=(2,1))
+end
+
+plot_error(t, x, z_true, P)
+```
+
+## Ganancia de Kalman
+
+```{julia}
+function kalman_gain(K)
+    return [norm(K[:,:,i]) for i in 1:size(K,3)]
+end
+```
+
+
+```{julia}
+function plot_gain(t, P, K)
+    v = varianza_estimador(P)
+    k = kalman_gain(K)
+    p1 = plot(t, v, ylim=[0, maximum(v)*1.1], ylabel="Incerteza")
+    p2 = plot(t, k, ylim=[0, maximum(k)*1.1], ylabel="Ganancia Kalman", xlabel="t")
+    return plot(p1, p2, layout=(2,1))
+end
+plot_gain(t, P, K)
+```
+
+```{julia}
+k1 = 4000
+k2 = 4050
+plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+```
+
+# Efecto de la incerteza de los instrumentos
+
+## Incrementa x5 error de GPS
+
+```{julia}
+Q = [err_IMU_x^2 0 0; 0 err_IMU_x^2 0; 0 0 err_IMU_θ^2]
+R = [(5*err_GPS)^2 0 0; 0 (5*err_GPS)^2 0; 0 0 err_MAG^2]
+
+dist_ruido_IMU = MvNormal([0,0,0], Q)
+dist_ruido_GPS = MvNormal([0,0,0], R)
+
+u_noise = hcat([rand(dist_ruido_IMU) for ti in t]...)
+z_noise = hcat([rand(dist_ruido_GPS) for ti in t]...)
+
+u_true = hcat([mrua_IMU(5e-4) for ti in t]...)
+z_true = hcat([mrua_GPS(5e-4, ti, pi/4) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true)
+```
+
+```{julia}
+u_true = hcat([circular_IMU(20, 2*pi/T, ti) for ti in t]...)
+z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true)
+```
+
+
+```{julia}
+plot_error(t, x, z_true, P)
+```
+
+```{julia}
+plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+```
+
+
+## Incrementa x5 error de IMU
+
+```{julia}
+Q = [(5*err_IMU_x)^2 0 0; 0 (5*err_IMU_x)^2 0; 0 0 (5*err_IMU_θ)^2]
+R = [err_GPS^2 0 0; 0 err_GPS^2 0; 0 0 err_MAG^2]
+
+dist_ruido_IMU = MvNormal([0,0,0], Q)
+dist_ruido_GPS = MvNormal([0,0,0], R)
+
+u_noise = hcat([rand(dist_ruido_IMU) for ti in t]...)
+z_noise = hcat([rand(dist_ruido_GPS) for ti in t]...)
+
+u_true = hcat([mrua_IMU(5e-4) for ti in t]...)
+z_true = hcat([mrua_GPS(5e-4, ti, pi/4) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true)
+```
+
+```{julia}
+u_true = hcat([circular_IMU(20, 2*pi/T, ti) for ti in t]...)
+z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+x, P, K = kalman(t, 10, u, z)
+```
+
+```{julia}
+trayectoria_xy(x, z_true)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true)
+```
+
+
+```{julia}
+plot_error(t, x, z_true, P)
+```
+
+```{julia}
+plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
 ```
