@@ -40,11 +40,6 @@ Los instrumentos disponibles para la estimación de la posición son los siguien
   - Giróscopo: Mide la velocidad angular del móvil, $u^{\theta} = \dot{\theta}$.
 - GPS: Mide la posición del móvil en el sistema de referencia inercial a una tasa $f_s'$.
 - Magnetómetro: Por medio de mediciones del campo magnético terrestre calcula la orientación del móvil, también a tasa $f_s'$. 
-
-## Error de los instrumentos
-
-Para cada dimensión de medición se considera su correspondiente error 
-
 ```{julia}
 #| output: false
 using LinearAlgebra
@@ -53,9 +48,38 @@ using Plots
 using PlotThemes
 
 theme(:wong2)
+```
+## Error de los instrumentos
 
-## Parametros de error instrumentos
+Para cada dimensión de medición se considera su correspondiente error. Se hace a partir de los datos en la hoja de datos.
 
+| Parámetro | Símbolo | Valor |
+|----------|----------|----------|
+| Frecuencia de muestreo IMU | $f_s$ | $10 \, \mathrm{Hz}$ |
+| Frecuencia de muestreo GPS | $f_s'$ | $1 \, \mathrm{Hz}$ |
+| PSD ruido acelerómetro | $S_{acc}$ | $80\, \mathrm{\mu g}/\sqrt{\mathrm{Hz}}$ |  
+| PSD ruido giróscopo | $S_{gir}$ | $0.03\, ^\circ/s/\sqrt{\mathrm{Hz}}$ |  
+| PSD ruido giróscopo | $S_{gir}$ | $100\, \mathrm{\mu Gauss}/\sqrt{\mathrm{Hz}}$ |  
+| Error absoluto del GPS | $\sigma_{GPS}$ | $2.5\, \mathrm{m}$ | 
+| Intensidad campo magnético | $B_T$ | $25358\,\mathrm{nT}$ | 
+
+El error de las mediciones del IMU se calculan a partir de la densidad espectral del ruido informada en la hoja de datos, $S_{acc}$ para el acelerómetro y $S_{gir}$ para el giróscopo, y la frecuencia de muestreo $f_s$
+
+$$
+\sigma_{acc} = S_{acc} \sqrt{fs}  \qquad
+\sigma_{acc} = S_{gir} \sqrt{fs} 
+$$
+
+El error del magnetómetro se calcula también a partir de su densidad espectral de ruido $S_{mag}$ y su frecuencia de muestreo $f_s'$, y también es afectado por la intensidad del campo magnético terrestre $B_T$
+
+$$
+\sigma_{mag} = \frac{S_{mag} \sqrt{fs'}}{B_T} 
+$$
+
+Fialmente, el error del GPS no depende de la frecuencia de muestreo, y es informado diréctamente en la hoja de datos
+
+```{julia}
+#| output: false
 Δt = 0.1
 
 fs = 10
@@ -102,9 +126,9 @@ Los errores de medición se consideran independientes, por lo que la matriz de c
 
 $$
   Q = \begin{bmatrix}
-    (\sigma^{x_b})^2 & 0 & 0\\
-    0 & (\sigma^{x_b})^2 & 0\\
-    0 & 0 & (\sigma^\theta)^2\\
+    (\sigma_{acc})^2 & 0 & 0\\
+    0 & (\sigma_{acc})^2 & 0\\
+    0 & 0 & (\sigma_{gir})^2\\
   \end{bmatrix}
 $$
 
@@ -119,6 +143,19 @@ $$
   z_k^{\theta} \end{bmatrix} + \mathbf{v}_k
 $$
 
+Los errores de medición se consideran independientes, por lo que la matriz de covarianza de $\mathbf{w}'$ es dada por
+
+$$
+  R = \begin{bmatrix}
+    (\sigma_{GPS})^2 & 0 & 0\\
+    0 & (\sigma_{GPS})^2 & 0\\
+    0 & 0 & (\sigma_{mag})^2\\
+  \end{bmatrix}
+$$
+
+
+## Modelo de actualización de estado
+
 En ausencia de aceleración, la evolución del estado en un tiempo $\Delta t$ seguiría un movimiento rectilíneo uniforme, dado por
 
 $$
@@ -132,8 +169,6 @@ $$
 \end{bmatrix}
 \begin{bmatrix}x_{k-1} \\ \dot{x}_{k-1} \\ y_{k-1} \\ \dot{y}_{k-1} \\ \theta_{k-1} \end{bmatrix} 
 $$
-
-## Modelo de actualización de estado
 
 La actualización del estado se hace en función de las mediciones de la IMU, que informan la aceleración del móvil en el sistema de referencia _body_, estas se modelan como el vector de medición $\mathbf u$ más el vector de error $\mathbf w'$
 
@@ -171,9 +206,25 @@ $$
 $$
 
 
-## Modelo de actualización por medición
+## Actualización por medición
 
+La actualización por medición se basa en relacionar las mediciones del GPS y el magnetómetro con el estado actual $\mathbf{\hat{x}}$ de la siguiente forma
 
+$$
+\mathbf{z}_k = H\mathbf{\hat{x}}_k - \mathbf{v}_k
+$$
+
+En donde la matriz $H$ es dada por
+
+$$
+H =  \begin{bmatrix}
+1 & 0 & 0 & 0 & 0\\
+0 & 0 & 1 & 0 & 0\\
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}
+$$
+
+Y el vector de ruido tiene matriz de covarianza $R$
 
 ```{julia}
 #| output: false
@@ -199,15 +250,37 @@ H = [1 0 0 0 0;
 
 # Implementación del algoritmo de estimación
 
-## Inicialización
+El algoritmo de estimación se implementa con una etapa de inicialización del estado $\mathbf{\hat{x}}$ y de la matriz de covarianza $P$, seguido de un ciclo `for` que realiza la predicción en cada instante de muestreo de la IMU, e incluye la etapa de corrección en cada instante de muestreo del GPS.
 
 ```{julia}
-function kalman_initialize(t, z)
+function kalman(t, tasa_GPS, u, z, Q, R)
+    x, P, K = kalman_initialize(t, z, R)
+    for k in 2:length(t)
+        x_est, P_est, K_k = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1], Q, R)
+        if k%tasa_GPS == 0
+            x_est, P_est = kalman_correct(x_est, z[:,k], P_est, K_k)
+        end
+        x[:,k] = x_est
+        P[:,:,k] = P_est
+        K[:,:,k] = K_k
+    end
+    return x, P, K
+end
+```
+
+## Inicialización
+
+Los valores de posición y orientación del estado $\mathbf{\hat{x}}$ se inicializan con las primeras mediciones provenientes del GPS/magnetómetro. Los valores de velocidad se inicializan en $0$. 
+
+Se decide inicializar la matriz de covarianza con el error del GPS para la posición, el error del GPS multiplicado por la frecuencia de muestreo para la velocidad, y $2\pi$ para la orientación.
+
+```{julia}
+function kalman_initialize(t, z, R)
     N = length(t)
     x = zeros(5, N)
     x[1:2:5,1] = z[:,1]
     P = zeros(5, 5, N)
-    P[:,:,1] = diagm([err_GPS^2,(err_GPS*fs2)^2,err_GPS^2,(err_GPS*fs2)^2,2pi])
+    P[:,:,1] = diagm([R[1,1]^2,(R[1,1]*fs2)^2,R[2,2]^2,(R[2,2]*fs2)^2,2pi])
     K = zeros(5, 3, N)
     return x, P, K
 end
@@ -222,7 +295,7 @@ En cada instante de muestreo del IMU se realiza la etapa de predicción
 - Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
 
 ```{julia}
-function kalman_predict(x, u, P)
+function kalman_predict(x, u, P, Q, R)
     B = B_matrix(x[5])
     x_est = A*x + B*u
     P_est = A*P*A' + B*Q*B'
@@ -246,21 +319,6 @@ function kalman_correct(x_prior, z, P_prior, K)
 end
 ```
 
-```{julia}
-function kalman(t, tasa_GPS, u, z)
-    x, P, K = kalman_initialize(t, z)
-    for k in 2:length(t)
-        x_est, P_est, K_k = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1])
-        if k%tasa_GPS == 0
-            x_est, P_est = kalman_correct(x_est, z[:,k], P_est, K_k)
-        end
-        x[:,k] = x_est
-        P[:,:,k] = P_est
-        K[:,:,k] = K_k
-    end
-    return x, P, K
-end
-```
 
 # Estimación de diferentes trayectorias
 
@@ -281,12 +339,14 @@ z_noise = hcat([rand(dist_ruido_GPS) for ti in t]...)
 
 ## Móvil estático
 
+Se analiza la trayectoria real, dada por $\mathbf{z}$, contra la trayectoria estimada extraida de $\mathbf{\hat{x}}$ en el caso de que el vehículo se encuentra en reposo. 
+
+En este caso los vectores de medición $\mathbf{\overline{u}}$ y $\mathbf{\overline{z}}$ son dados por
+
 $$
     \mathbf{\overline{u}}_k = \begin{bmatrix} 0 \\ 0 \\
   0 \end{bmatrix} + \mathbf{w}_k'
-$$
-
-$$
+\qquad\qquad
     \mathbf{\overline{z}}_k = \begin{bmatrix} 0 \\ 0 \\
   0 \end{bmatrix} + \mathbf{v}_k
 $$
@@ -306,7 +366,7 @@ z_true = hcat([estatico_GPS() for ti in t]...)
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P, K = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -335,12 +395,13 @@ trayectoria_t(t, x, z_true)
 
 ## Movimiento rectilíneo uniformemente acelerado
 
+Se analiza la trayectoria real, dada por $\mathbf{z}$, contra la trayectoria estimada extraida de $\mathbf{\hat{x}}$ en el caso de que el vehículo parte del reposo y sigue un movimiento rectilíneo uniformemente acelerado con aceleración $a$ a un ángulo $\theta$ respecto a la horizontal. 
+
+En este caso los vectores de medición $\mathbf{\overline{u}}$ y $\mathbf{\overline{z}}$ son dados por
 $$
     \mathbf{\overline{u}}_k = \begin{bmatrix} a \\ 0 \\
   0 \end{bmatrix} + \mathbf{w}_k'
-$$
-
-$$
+\qquad\qquad
     \mathbf{\overline{z}}_k = \begin{bmatrix} \frac 1 2 a t_k^2 \cos(\theta)  \\ \frac 1 2 a t_k^2 \sin(\theta)  \\
   \theta \end{bmatrix} + \mathbf{v}_k
 $$
@@ -361,7 +422,7 @@ z_true = hcat([mrua_GPS(5e-4, ti, pi/4) for ti in t]...)
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P, K = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -374,12 +435,13 @@ trayectoria_t(t, x, z_true)
 
 ## Movimiento circular uniforme 
 
+Se analiza la trayectoria real, dada por $\mathbf{z}$, contra la trayectoria estimada extraida de $\mathbf{\hat{x}}$ en el caso de que el vehículo sigue un movimiento circular uniforme a un radio $r$ del origen y con velocidad angular $\omega$.
+
+En este caso los vectores de medición $\mathbf{\overline{u}}$ y $\mathbf{\overline{z}}$ son dados por
 $$
     \mathbf{\overline{u}}_k = \begin{bmatrix} 0 \\ \omega^2 r \\
   \omega \end{bmatrix} + \mathbf{w}_k'
-$$
-
-$$
+\qquad\qquad
     \mathbf{\overline{z}}_k = \begin{bmatrix} r \cos(\omega t_k)  \\ r \sin(\omega t_k)  \\
   \omega t_k + \frac \pi 2 \end{bmatrix} + \mathbf{v}_k
 $$
@@ -401,7 +463,7 @@ z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P, K = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -413,6 +475,8 @@ trayectoria_t(t, x, z_true)
 ```
 
 # Análisis de desempeño
+
+En la comparación de las trayectorias reales contra la estimación se observa que el error de medición es máximo al inicio de la trayectoria, y este error disminuye conforme el tiempo avanza y el filtro de Kalman alcanza un estado de equilibrio. Se busca analizar cuantitativamente este efecto comparando el error de la medición y la incerteza de la estimación en función del tiempo.
 
 ## Error de estimación
 
@@ -439,12 +503,14 @@ function varianza_estimador(P)
 end
 ```
 
+Los resultados verifican las observaciones, y se presentan a continuación
+
 ```{julia}
 function plot_error(t, x, z_true, P)
     v = varianza_estimador(P)
     e = error_cuadratico(x, z_true)
-    p1 = plot(t, v, ylim=[0, maximum(v)*1.1], ylabel="Incerteza")
-    p2 = plot(t, e, ylim=[0, maximum(e)*1.1], ylabel="Error cuadrático", xlabel="t")
+    p1 = plot(t, v, ylim=[0, min(100,maximum(v)*1.1)], ylabel="Incerteza")
+    p2 = plot(t, e, ylim=[0, 30], ylabel="Error cuadrático", xlabel="t")
     return plot(p1, p2, layout=(2,1))
 end
 
@@ -452,6 +518,8 @@ plot_error(t, x, z_true, P)
 ```
 
 ## Ganancia de Kalman
+
+Además del error de medición, se analiza la evolución de la ganancia de Kalman $K_k$ en función del tiempo. Esta se cuantifica como la norma de la matriz. 
 
 ```{julia}
 function kalman_gain(K)
@@ -464,12 +532,25 @@ end
 function plot_gain(t, P, K)
     v = varianza_estimador(P)
     k = kalman_gain(K)
-    p1 = plot(t, v, ylim=[0, maximum(v)*1.1], ylabel="Incerteza")
-    p2 = plot(t, k, ylim=[0, maximum(k)*1.1], ylabel="Ganancia Kalman", xlabel="t")
+    p1 = plot(t, v, ylabel="Incerteza", linetype=:steppost)
+    p2 = plot(t, k, ylim=[0, maximum(k)*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost)
+    return plot(p1, p2, layout=(2,1))
+end
+function plot_gain(t, P1, K1, P2, K2)
+    v1 = varianza_estimador(P1)
+    k1 = kalman_gain(K1)
+    v2 = varianza_estimador(P2)
+    k2 = kalman_gain(K2)
+    p1 = plot(t, v1, ylabel="Incerteza", linetype=:steppost, label=false)
+    plot!(t, v2, ylabel="Incerteza", linetype=:steppost, label="Referencia")
+    p2 = plot(t, k1, ylim=[0, maximum(k1)*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label=false)
+    plot!(t, k2, ylim=[0, maximum(k2)*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label="Referencia")
     return plot(p1, p2, layout=(2,1))
 end
 plot_gain(t, P, K)
 ```
+
+Se hace un foco en el estado estacionario del filtro, para observar como es afectada la incerteza del estimador y la ganacia de Kalman en los instantes en los que se registra una medición del GPS.
 
 ```{julia}
 k1 = 4000
@@ -479,9 +560,27 @@ plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
 
 # Efecto de la incerteza de los instrumentos
 
-## Incrementa x5 error de GPS
+A continuación se analizará como se modifica el desempeño del filtro si se varían los parámetros de error de los instrumentos que lo componen, ya sea el IMU o el GPS. Se llama caso de referencia al filtro de Kalman desarrollado.
+
+## Incremento x5 del error de GPS
+
+Primero se analiza que sucede si el error del IMU se mantiene igual y el error del GPS incrementa 5 veces. Esto se realiza ejecutando el programa pero utilizando la siguiente matriz de covariaza para el ruido de medición
+
+$$
+  R = \begin{bmatrix}
+    (5\sigma_{GPS})^2 & 0 & 0\\
+    0 & (5\sigma_{GPS})^2 & 0\\
+    0 & 0 & (\sigma_{mag})^2\\
+  \end{bmatrix}
+$$
+
+Se analiza las trayectorias rectilínea y circular, y los resultados se presentan a continuación.
+
+### Trayectoria rectilínea
 
 ```{julia}
+#| output: false
+
 Q = [err_IMU_x^2 0 0; 0 err_IMU_x^2 0; 0 0 err_IMU_θ^2]
 R = [(5*err_GPS)^2 0 0; 0 (5*err_GPS)^2 0; 0 0 err_MAG^2]
 
@@ -497,7 +596,7 @@ z_true = hcat([mrua_GPS(5e-4, ti, pi/4) for ti in t]...)
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P2, K2 = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -508,14 +607,18 @@ trayectoria_xy(x, z_true)
 trayectoria_t(t, x, z_true)
 ```
 
+### Trayectoria circular
+
 ```{julia}
+#| output: false
+
 u_true = hcat([circular_IMU(20, 2*pi/T, ti) for ti in t]...)
 z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
 
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P2, K2 = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -526,19 +629,41 @@ trayectoria_xy(x, z_true)
 trayectoria_t(t, x, z_true)
 ```
 
+### Error de estimación
 
 ```{julia}
-plot_error(t, x, z_true, P)
+plot_error(t, x, z_true, P2)
 ```
 
 ```{julia}
-plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+k1 = 4800
+k2 = 4850
+plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[:,:,k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
 ```
 
+### Observaciones
 
-## Incrementa x5 error de IMU
+- El error de estimación es mucho mayor respecto al caso de referencia, en particular cerca del inicio de la trayectoria.
+- El filtro tarda mucho más tiempo en alcanzar el estado estacionario respecto al caso de referencia. 
+- A pesar que la incerteza de medición es mucho mayor, en el estado estacionario la ganancia de Kalman es similar a aquella del caso de referencia.
+
+## Incremento x5 del error de IMU
+
+A continuación se analiza que sucede si el error del IMU es el que incrementa 5 veces y el error del GPS se mantiene igual. Esto se realiza ejecutando el programa pero utilizando la siguiente matriz de covariaza para el ruido de modelo
+
+$$
+  Q = \begin{bmatrix}
+    (5\sigma_{acc})^2 & 0 & 0\\
+    0 & (5\sigma_{acc})^2 & 0\\
+    0 & 0 & (5\sigma_{gir})^2\\
+  \end{bmatrix}
+$$
+
+### Trayectoria rectilínea
 
 ```{julia}
+#| output: false
+
 Q = [(5*err_IMU_x)^2 0 0; 0 (5*err_IMU_x)^2 0; 0 0 (5*err_IMU_θ)^2]
 R = [err_GPS^2 0 0; 0 err_GPS^2 0; 0 0 err_MAG^2]
 
@@ -554,7 +679,7 @@ z_true = hcat([mrua_GPS(5e-4, ti, pi/4) for ti in t]...)
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P2, K2 = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -565,14 +690,18 @@ trayectoria_xy(x, z_true)
 trayectoria_t(t, x, z_true)
 ```
 
+### Trayectoria circular
+
 ```{julia}
+#| output: false
+
 u_true = hcat([circular_IMU(20, 2*pi/T, ti) for ti in t]...)
 z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
 
 u = u_true + u_noise
 z = z_true + z_noise
 
-x, P, K = kalman(t, 10, u, z)
+x, P2, K2 = kalman(t, 10, u, z, Q, R)
 ```
 
 ```{julia}
@@ -583,11 +712,21 @@ trayectoria_xy(x, z_true)
 trayectoria_t(t, x, z_true)
 ```
 
+### Error de estimación
 
 ```{julia}
-plot_error(t, x, z_true, P)
+plot_error(t, x, z_true, P2)
 ```
 
 ```{julia}
-plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+k1 = 4000
+k2 = 4050
+plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[:,:,k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
 ```
+
+### Observaciones
+
+- El error de estimación es mayor respecto al caso de referencia, pero la diferencia no es tan drástica como en el caso que incrementa el error del GPS.
+- No se ve afectado el tiempo que tarda el filtro en alcanzar el estado estacionario respecto al caso de referencia. 
+- El error de estimador es mayor respecto al caso de referencia, incluso en el estado estacionario.
+- Se nota que la ganancia de Kalman es mayor respecto al caso de referencia. Esto implica que las mediciones del GPS se consideran más informativas.
