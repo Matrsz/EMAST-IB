@@ -256,13 +256,13 @@ El algoritmo de estimación se implementa con una etapa de inicialización del e
 function kalman(t, tasa_GPS, u, z, Q, R)
     x, P, K = kalman_initialize(t, z, R)
     for k in 2:length(t)
-        x_est, P_est, K_k = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1], Q, R)
+        x_est, P_est = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1], Q)
         if k%tasa_GPS == 0
-            x_est, P_est = kalman_correct(x_est, z[:,k], P_est, K_k)
+            x_est, P_est, K_k = kalman_correct(x_est, z[:,k], P_est, R)
+          K[k] = norm(K_k)
         end
         x[:,k] = x_est
         P[:,:,k] = P_est
-        K[:,:,k] = K_k
     end
     return x, P, K
 end
@@ -281,7 +281,7 @@ function kalman_initialize(t, z, R)
     x[1:2:5,1] = z[:,1]
     P = zeros(5, 5, N)
     P[:,:,1] = diagm([R[1,1]^2,(R[1,1]*fs2)^2,R[2,2]^2,(R[2,2]*fs2)^2,2pi])
-    K = zeros(5, 3, N)
+    K = zeros(N)
     return x, P, K
 end
 ```
@@ -295,12 +295,11 @@ En cada instante de muestreo del IMU se realiza la etapa de predicción
 - Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
 
 ```{julia}
-function kalman_predict(x, u, P, Q, R)
+function kalman_predict(x, u, P, Q)
     B = B_matrix(x[5])
     x_est = A*x + B*u
     P_est = A*P*A' + B*Q*B'
-    K = P_est*H'*inv(H*P_est*H'+R)
-    return x_est, P_est, K
+    return x_est, P_est
 end
 ```
 
@@ -312,10 +311,11 @@ En cada instante de muestreo del GPS/magnetómetro, se aplica una corrección po
 - Covarianza _a posteriori_: $P_k^{+} = (I-K_k H)P_k^{-}$
 
 ```{julia}
-function kalman_correct(x_prior, z, P_prior, K)
+function kalman_correct(x_prior, z, P_prior, R)
+    K = P_prior*H'*inv(H*P_prior*H'+R)
     x_est = x_prior + K*(z-H*x_prior)
     P_est = (I-K*H)*P_prior
-    return x_est, P_est
+    return x_est, P_est, K
 end
 ```
 
@@ -376,6 +376,13 @@ function trayectoria_xy(x, z_true)
     return p1
 end
 
+function trayectoria_xy(x, z_true, k_loss)
+    p1 = plot(x[1,:], x[3,:], label="Estimación", xlabel="x", ylabel="y", aspect_ratio=:equal, title="Trayectoria XY")
+    plot!(p1, x[1,k_loss], x[3,k_loss], aspect_ratio=:equal, label="Pérdida instrumento")
+    plot!(p1, z_true[1,:], z_true[2,:], label="Trayectoria")
+    return p1
+end
+
 trayectoria_xy(x, z_true)
 ```
 
@@ -386,6 +393,19 @@ function trayectoria_t(t, x, z_true)
     p2 = plot(t, x[3,:], ylabel="y [m]")
     plot!(p2, t, z_true[2,:])
     p3 = plot(t, x[5,:] .% 2pi, ylabel="θ", xlabel="t [s]")
+    plot!(p3, t, z_true[3,:] .% 2pi)
+    return plot(p1,p2,p3, layout=(3,1), legend=false)
+end
+
+function trayectoria_t(t, x, z_true, k_loss)
+    p1 = plot(t, x[1,:], ylabel="x [m]", title="Trayectoria en función del tiempo")
+    plot!(p1, t[k_loss], x[1,k_loss])
+    plot!(p1, t, z_true[1,:])
+    p2 = plot(t, x[3,:], ylabel="y [m]")
+    plot!(p2, t[k_loss], x[3,k_loss])
+    plot!(p2, t, z_true[2,:])
+    p3 = plot(t, x[5,:] .% 2pi, ylabel="θ", xlabel="t [s]")
+    plot!(p3, t[k_loss], x[5,k_loss] .% 2pi)
     plot!(p3, t, z_true[3,:] .% 2pi)
     return plot(p1,p2,p3, layout=(3,1), legend=false)
 end
@@ -514,6 +534,16 @@ function plot_error(t, x, z_true, P)
     return plot(p1, p2, layout=(2,1))
 end
 
+function plot_error(t, x, z_true, P, k_loss)
+    v = varianza_estimador(P)
+    e = error_cuadratico(x, z_true)
+    p1 = plot(t, v, ylim=[0, min(100,maximum(v)*1.1)], ylabel="Incerteza")
+    plot!(p1, t[k_loss], v[k_loss], label="Pérdida Instrumento")
+    p2 = plot(t, e, ylim=[0, 30], ylabel="Error cuadrático", xlabel="t")
+    plot!(p2, t[k_loss], e[k_loss], label="Pérdida Instrumento")
+    return plot(p1, p2, layout=(2,1))
+end
+
 plot_error(t, x, z_true, P)
 ```
 
@@ -522,29 +552,22 @@ plot_error(t, x, z_true, P)
 Además del error de medición, se analiza la evolución de la ganancia de Kalman $K_k$ en función del tiempo. Esta se cuantifica como la norma de la matriz. 
 
 ```{julia}
-function kalman_gain(K)
-    return [norm(K[:,:,i]) for i in 1:size(K,3)]
-end
-```
-
-
-```{julia}
-function plot_gain(t, P, K)
+function plot_gain(T, P, K)
+    k = findall(x -> x!=0, K)
     v = varianza_estimador(P)
-    k = kalman_gain(K)
     p1 = plot(t, v, ylabel="Incerteza", linetype=:steppost)
-    p2 = plot(t, k, ylim=[0, maximum(k)*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost)
+    p2 = plot(t[k], K[k], ylim=[0, maximum(K)*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost)
     return plot(p1, p2, layout=(2,1))
 end
 function plot_gain(t, P1, K1, P2, K2)
     v1 = varianza_estimador(P1)
-    k1 = kalman_gain(K1)
     v2 = varianza_estimador(P2)
-    k2 = kalman_gain(K2)
+    k1 = findall(x -> x!=0, K1)
+    k2 = findall(x -> x!=0, K2)
     p1 = plot(t, v1, ylabel="Incerteza", linetype=:steppost, label=false)
-    plot!(t, v2, ylabel="Incerteza", linetype=:steppost, label="Referencia")
-    p2 = plot(t, k1, ylim=[0, max(maximum(k1),maximum(k2))*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label=false)
-    plot!(t, k2, ylim=[0, max(maximum(k1),maximum(k2))*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label="Referencia")
+    plot!(t, v2, ylabel="Incerteza", linetype=:steppost, label="Referencia", ylim=(0,100))
+    p2 = plot(t[k1], K1[k1], ylim=[0, max(maximum(K1),maximum(K2))*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label=false)
+    plot!(t[k2], K2[k2], ylim=[0, max(maximum(K1),maximum(K2))*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label="Referencia")
     return plot(p1, p2, layout=(2,1))
 end
 plot_gain(t, P, K)
@@ -555,7 +578,7 @@ Se hace un foco en el estado estacionario del filtro, para observar como es afec
 ```{julia}
 k1 = 4000
 k2 = 4050
-plot_gain(t[k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+plot_gain(t[k1:k2], P[:,:,k1:k2], K[k1:k2])
 ```
 
 # Efecto de la incerteza de los instrumentos
@@ -638,7 +661,7 @@ plot_error(t, x, z_true, P2)
 ```{julia}
 k1 = 4800
 k2 = 4850
-plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[:,:,k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[k1:k2], P[:,:,k1:k2], K[k1:k2])
 ```
 
 ### Observaciones
@@ -721,7 +744,7 @@ plot_error(t, x, z_true, P2)
 ```{julia}
 k1 = 4000
 k2 = 4050
-plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[:,:,k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
+plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[k1:k2], P[:,:,k1:k2], K[k1:k2])
 ```
 
 ### Observaciones
@@ -730,3 +753,161 @@ plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[:,:,k1:k2], P[:,:,k1:k2], K[:,:,k1:k2])
 - No se ve afectado el tiempo que tarda el filtro en alcanzar el estado estacionario respecto al caso de referencia. 
 - El error de estimador es mayor respecto al caso de referencia, incluso en el estado estacionario.
 - Se nota que la ganancia de Kalman es mayor respecto al caso de referencia. Esto implica que las mediciones del GPS se consideran más informativas.
+
+# Simulación pérdida de instrumentos
+
+## Pérdida del GPS
+
+Suponemos la pérdida del GPS. En este caso la ecuación de acualización de estado se convierte en
+
+$$
+  \mathbf{z}_k' = H'\mathbf{\hat{x}}_k - \mathbf{v}_k'
+$$
+
+En donde la matriz $H$ es dada por
+
+$$
+H' =  \begin{bmatrix}
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}
+$$
+
+$$
+  \mathbf{z}_k' = \begin{bmatrix} z_k^{\theta} \end{bmatrix}
+$$
+
+Los errores de medición se consideran independientes, por lo que la matriz de covarianza de $\mathbf{v}'$ es dada por
+
+$$
+  R' = \begin{bmatrix}
+   (\sigma_{mag})^2\\
+  \end{bmatrix}
+$$
+
+## Pérdida del magnetómetro
+
+Suponemos la pérdida del GPS. En este caso la ecuación de acualización de estado se convierte en
+
+$$
+  \mathbf{z}_k'' = H''\mathbf{\hat{x}}_k - \mathbf{v}_k''
+$$
+
+En donde la matriz $H$ es dada por
+
+$$
+H'' =  \begin{bmatrix}
+1 & 0 & 0 & 0 & 0 \\
+0 & 0 & 1 & 0 & 0
+\end{bmatrix}
+$$
+
+$$
+  \mathbf{z}_k'' = \begin{bmatrix} z_k^{x} \\ z_k^{y} \end{bmatrix}
+$$
+
+Los errores de medición se consideran independientes, por lo que la matriz de covarianza de $\mathbf{v}'$ es dada por
+
+$$
+  R'' = \begin{bmatrix}
+   (\sigma_{GPS})^2 & 0\\
+   0 & (\sigma_{GPS})^2
+  \end{bmatrix}
+$$
+
+```{julia}
+function kalman_correct(x_prior, z, P_prior, K, GPS=true, mag=true)
+  if GPS && mag
+    H2 = H
+    z2 = z
+    R2 = R
+  elseif mag
+    H2 = H[3,:]'
+    z2 = z[3]
+    R2 = R[3,3]
+  else
+    H2 = H[1:2, :]
+    z2 = z[1:2]
+    R2 = R[1:2,1:2]
+  end   
+  K = P_prior*H2'*inv(H2*P_prior*H2'+R2)
+  x_est = x_prior + K*(z2-H2*x_prior)
+  P_est = (I-K*H2)*P_prior
+  return x_est, P_est, K
+end
+
+function kalman(t, tasa_GPS, u, z, Q, R, gps, mag)
+    x, P, K = kalman_initialize(t, z, R)
+    K = zeros(size(t))
+    for k in 2:length(t)
+        x_est, P_est = kalman_predict(x[:,k-1], u[:,k], P[:,:,k-1], Q)
+        if k%tasa_GPS == 0
+            x_est, P_est, K_k = kalman_correct(x_est, z[:,k], P_est, R, gps[k], mag[k])
+          K[k] = norm(K_k)
+        end
+        x[:,k] = x_est
+        P[:,:,k] = P_est
+    end
+    return x, P, K
+end
+```
+
+
+```{julia}
+#| output: false
+
+Q = [(err_IMU_x)^2 0 0; 0 (err_IMU_x)^2 0; 0 0 (err_IMU_θ)^2]
+R = [err_GPS^2 0 0; 0 err_GPS^2 0; 0 0 err_MAG^2]
+
+dist_ruido_IMU = MvNormal([0,0,0], Q)
+dist_ruido_GPS = MvNormal([0,0,0], R)
+
+u_noise = hcat([rand(dist_ruido_IMU) for ti in t]...)
+z_noise = hcat([rand(dist_ruido_GPS) for ti in t]...)
+
+u_true = hcat([circular_IMU(20, 2*pi/T, ti) for ti in t]...)
+z_true = hcat([circular_GPS(20, 2*pi/T, ti) for ti in t]...)
+
+u = u_true + u_noise
+z = z_true + z_noise
+
+k_loss = 2001:4000
+
+gps_sig = ones(size(t)) .|> Bool
+mag_sig = ones(size(t)) .|> Bool
+gps_sig[k_loss] = zeros(length(k_loss)) .|> Bool
+
+x, P2, K2 = kalman(t, 10, u, z, Q, R, gps_sig, mag_sig)
+```
+
+```{julia}
+trayectoria_xy(x, z_true, k_loss)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true, k_loss)
+```
+
+```{julia}
+plot_error(t, x, z_true, P2, k_loss)
+```
+
+
+```{julia}
+gps_sig = ones(size(t)) .|> Bool
+mag_sig = ones(size(t)) .|> Bool
+mag_sig[k_loss] = zeros(length(k_loss)) .|> Bool
+
+x, P2, K2 = kalman(t, 10, u, z, Q, R, gps_sig, mag_sig)
+```
+
+```{julia}
+trayectoria_xy(x, z_true, k_loss)
+```
+
+```{julia}
+trayectoria_t(t, x, z_true, k_loss)
+```
+
+```{julia}
+plot_error(t, x, z_true, P2, k_loss)
+```
