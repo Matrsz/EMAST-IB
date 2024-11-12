@@ -292,7 +292,6 @@ En cada instante de muestreo del IMU se realiza la etapa de predicción
 
 - Estimación _a priori_: $\mathbf{\hat{x}}_k^{-} = \mathbf{\hat{x}}_{k-1} + B_{k-1} \mathbf{\overline{u}}_{k-1}$
 - Covarianza _a priori_: $P_k^{-} = A P_{k-1}A^T + Q_k$
-- Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
 
 ```{julia}
 function kalman_predict(x, u, P, Q)
@@ -307,6 +306,7 @@ end
 
 En cada instante de muestreo del GPS/magnetómetro, se aplica una corrección por medición al estimador.
 
+- Ganancia de Kalman: $K_k = P^{-}_k H^T (H P_k^{-}H^T + R_k)^{-1}$
 - Estimador _a posteriori_: $\mathbf{\hat{x}}_k^{+} = \mathbf{\hat{x}}_k^{-} + K_k (\mathbf{\overline{z}}_k-H\mathbf{\hat{x}}_k^{-})$
 - Covarianza _a posteriori_: $P_k^{+} = (I-K_k H)P_k^{-}$
 
@@ -372,14 +372,18 @@ x, P, K = kalman(t, 10, u, z, Q, R)
 ```{julia}
 function trayectoria_xy(x, z_true)
     p1 = plot(x[1,:], x[3,:], label="Estimación", xlabel="x", ylabel="y", aspect_ratio=:equal, title="Trayectoria XY")
-    plot!(p1, z_true[1,:], z_true[2,:], label="Trayectoria")
+    plot!(p1, z_true[1,:], z_true[2,:], label="Trayectoria", linestyle=:dash)
     return p1
 end
 
 function trayectoria_xy(x, z_true, k_loss)
-    p1 = plot(x[1,:], x[3,:], label="Estimación", xlabel="x", ylabel="y", aspect_ratio=:equal, title="Trayectoria XY")
-    plot!(p1, x[1,k_loss], x[3,k_loss], aspect_ratio=:equal, label="Pérdida instrumento")
-    plot!(p1, z_true[1,:], z_true[2,:], label="Trayectoria")
+    indices_sin_perdida = setdiff(1:size(x, 2), k_loss)
+    indices_antes_perdida = indices_sin_perdida[indices_sin_perdida .< k_loss[1]]
+    indices_despues_perdida = indices_sin_perdida[indices_sin_perdida .> k_loss[1]]
+    p1 = plot(x[1, indices_antes_perdida], x[3, indices_antes_perdida], label="Estimación", xlabel="x", ylabel="y", aspect_ratio=:equal, title="Trayectoria XY", color=:black)
+    plot!(p1, z_true[1, :], z_true[2, :], label="Trayectoria", linestyle=:dash)
+    plot!(p1, x[1, indices_despues_perdida], x[3, indices_despues_perdida], label=false, color=:black)
+    plot!(p1, x[1, k_loss], x[3, k_loss], aspect_ratio=:equal, label="Pérdida instrumento")
     return p1
 end
 
@@ -389,26 +393,37 @@ trayectoria_xy(x, z_true)
 ```{julia}
 function trayectoria_t(t, x, z_true)
     p1 = plot(t, x[1,:], ylabel="x [m]", title="Trayectoria en función del tiempo")
-    plot!(p1, t, z_true[1,:])
+    plot!(p1, t, z_true[1,:], linestyle=:dash)
     p2 = plot(t, x[3,:], ylabel="y [m]")
-    plot!(p2, t, z_true[2,:])
+    plot!(p2, t, z_true[2,:], linestyle=:dash)
     p3 = plot(t, x[5,:] .% 2pi, ylabel="θ", xlabel="t [s]")
-    plot!(p3, t, z_true[3,:] .% 2pi)
+    plot!(p3, t, z_true[3,:] .% 2pi, linestyle=:dash)
     return plot(p1,p2,p3, layout=(3,1), legend=false)
 end
 
 function trayectoria_t(t, x, z_true, k_loss)
-    p1 = plot(t, x[1,:], ylabel="x [m]", title="Trayectoria en función del tiempo")
-    plot!(p1, t[k_loss], x[1,k_loss])
-    plot!(p1, t, z_true[1,:])
-    p2 = plot(t, x[3,:], ylabel="y [m]")
-    plot!(p2, t[k_loss], x[3,k_loss])
-    plot!(p2, t, z_true[2,:])
-    p3 = plot(t, x[5,:] .% 2pi, ylabel="θ", xlabel="t [s]")
-    plot!(p3, t[k_loss], x[5,k_loss] .% 2pi)
-    plot!(p3, t, z_true[3,:] .% 2pi)
-    return plot(p1,p2,p3, layout=(3,1), legend=false)
+    # Define los índices antes y después de la pérdida
+    indices_antes_perdida = 1:(k_loss[1] - 1)
+    indices_despues_perdida = (k_loss[end] + 1):length(t)
+    
+    p1 = plot(t[indices_antes_perdida], x[1, indices_antes_perdida], ylabel="x [m]", title="Trayectoria en función del tiempo", color=:black)
+    plot!(p1, t, z_true[1, :], label="Trayectoria real", linestyle=:dash)
+    plot!(p1, t[indices_despues_perdida], x[1, indices_despues_perdida], color=:black)
+    plot!(p1, t[k_loss], x[1, k_loss], label="Pérdida")
+
+    p2 = plot(t[indices_antes_perdida], x[3, indices_antes_perdida], ylabel="y [m]", color=:black)
+    plot!(p2, t, z_true[2, :], linestyle=:dash)
+    plot!(p2, t[indices_despues_perdida], x[3, indices_despues_perdida], color=:black)
+    plot!(p2, t[k_loss], x[3, k_loss], linestyle=:dash)
+
+    p3 = plot(t[indices_antes_perdida], x[5, indices_antes_perdida] .% 2pi, ylabel="θ", xlabel="t [s]", color=:black)
+    plot!(p3, t, z_true[3, :] .% 2pi, linestyle=:dash)
+    plot!(p3, t[indices_despues_perdida], x[5, indices_despues_perdida] .% 2pi, color=:black)
+    plot!(p3, t[k_loss], x[5, k_loss] .% 2pi)
+    
+    return plot(p1, p2, p3, layout=(3, 1), legend=false)
 end
+
 
 trayectoria_t(t, x, z_true)
 ```
@@ -537,12 +552,21 @@ end
 function plot_error(t, x, z_true, P, k_loss)
     v = varianza_estimador(P)
     e = error_cuadratico(x, z_true)
-    p1 = plot(t, v, ylim=[0, min(100,maximum(v)*1.1)], ylabel="Incerteza")
+    
+    indices_antes_perdida = 1:(k_loss[1] - 1)
+    indices_despues_perdida = (k_loss[end] + 1):length(t)
+    
+    p1 = plot(t[indices_antes_perdida], v[indices_antes_perdida], label=false, ylim=[0, min(100, maximum(v) * 1.1)], ylabel="Incerteza", color=:black)
+    plot!(p1, t[indices_despues_perdida], v[indices_despues_perdida], label=false, color=:black)
     plot!(p1, t[k_loss], v[k_loss], label="Pérdida Instrumento")
-    p2 = plot(t, e, ylim=[0, 30], ylabel="Error cuadrático", xlabel="t")
+    
+    p2 = plot(t[indices_antes_perdida], e[indices_antes_perdida], ylim=[0, 30], label=false, ylabel="Error cuadrático", xlabel="t", color=:black)
+    plot!(p2, t[indices_despues_perdida], e[indices_despues_perdida], label=false, color=:black)
     plot!(p2, t[k_loss], e[k_loss], label="Pérdida Instrumento")
-    return plot(p1, p2, layout=(2,1))
+    
+    return plot(p1, p2, layout=(2, 1))
 end
+
 
 plot_error(t, x, z_true, P)
 ```
@@ -565,7 +589,7 @@ function plot_gain(t, P1, K1, P2, K2)
     k1 = findall(x -> x!=0, K1)
     k2 = findall(x -> x!=0, K2)
     p1 = plot(t, v1, ylabel="Incerteza", linetype=:steppost, label=false)
-    plot!(t, v2, ylabel="Incerteza", linetype=:steppost, label="Referencia", ylim=(0,100))
+    plot!(t, v2, ylabel="Incerteza", linetype=:steppost, label="Referencia")
     p2 = plot(t[k1], K1[k1], ylim=[0, max(maximum(K1),maximum(K2))*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label=false)
     plot!(t[k2], K2[k2], ylim=[0, max(maximum(K1),maximum(K2))*1.1], ylabel="Ganancia Kalman", xlabel="t", linetype=:steppost, label="Referencia")
     return plot(p1, p2, layout=(2,1))
@@ -756,7 +780,9 @@ plot_gain(t[k1:k2], P2[:,:,k1:k2], K2[k1:k2], P[:,:,k1:k2], K[k1:k2])
 
 # Simulación pérdida de instrumentos
 
-## Pérdida del GPS
+Finalmente se evalúa el comportamiento ante la pérdida de diferentes instrumentos de medición, ya sea la medición de posición con el GPS o la medición de la orientación con el magnetómetro
+
+## Modelo de actualización ante pérdida del GPS
 
 Suponemos la pérdida del GPS. En este caso la ecuación de acualización de estado se convierte en
 
@@ -764,7 +790,12 @@ $$
   \mathbf{z}_k' = H'\mathbf{\hat{x}}_k - \mathbf{v}_k'
 $$
 
-En donde la matriz $H$ es dada por
+En donde el vector de actualización contiene únicamente los datos del magnetómetro, 
+$$
+  \mathbf{z}_k' = \begin{bmatrix} z_k^{\theta} \end{bmatrix}
+$$
+
+La matriz $H'$ es dada por
 
 $$
 H' =  \begin{bmatrix}
@@ -772,19 +803,14 @@ H' =  \begin{bmatrix}
 \end{bmatrix}
 $$
 
-$$
-  \mathbf{z}_k' = \begin{bmatrix} z_k^{\theta} \end{bmatrix}
-$$
-
-Los errores de medición se consideran independientes, por lo que la matriz de covarianza de $\mathbf{v}'$ es dada por
-
+Y el error de medición $\mathbf{v}'$ tiene matriz de covarianza 
 $$
   R' = \begin{bmatrix}
    (\sigma_{mag})^2\\
   \end{bmatrix}
 $$
 
-## Pérdida del magnetómetro
+## Modelo de actualización ante pérdida del magnetómetro
 
 Suponemos la pérdida del GPS. En este caso la ecuación de acualización de estado se convierte en
 
@@ -792,7 +818,14 @@ $$
   \mathbf{z}_k'' = H''\mathbf{\hat{x}}_k - \mathbf{v}_k''
 $$
 
-En donde la matriz $H$ es dada por
+En donde el vector de actualización contiene únicamente los datos del GPS, 
+
+$$
+  \mathbf{z}_k'' = \begin{bmatrix} z_k^{x} \\ z_k^{y} \end{bmatrix}
+$$
+
+
+La matriz $H''$ es dada por
 
 $$
 H'' =  \begin{bmatrix}
@@ -801,11 +834,7 @@ H'' =  \begin{bmatrix}
 \end{bmatrix}
 $$
 
-$$
-  \mathbf{z}_k'' = \begin{bmatrix} z_k^{x} \\ z_k^{y} \end{bmatrix}
-$$
-
-Los errores de medición se consideran independientes, por lo que la matriz de covarianza de $\mathbf{v}'$ es dada por
+Y el error de medición $\mathbf{v}''$ tiene matriz de covarianza 
 
 $$
   R'' = \begin{bmatrix}
@@ -851,6 +880,11 @@ function kalman(t, tasa_GPS, u, z, Q, R, gps, mag)
 end
 ```
 
+## Simulación de pérdida del GPS
+
+
+Se elige simular la trayectoria circular ya que esta es la más afectada por los datos de la medición de la orientación. A contiuación se presentan los resultados.
+
 
 ```{julia}
 #| output: false
@@ -879,6 +913,9 @@ gps_sig[k_loss] = zeros(length(k_loss)) .|> Bool
 x, P2, K2 = kalman(t, 10, u, z, Q, R, gps_sig, mag_sig)
 ```
 
+
+### Trayectoria
+
 ```{julia}
 trayectoria_xy(x, z_true, k_loss)
 ```
@@ -887,12 +924,21 @@ trayectoria_xy(x, z_true, k_loss)
 trayectoria_t(t, x, z_true, k_loss)
 ```
 
+
+### Error de estimación
+
+
 ```{julia}
 plot_error(t, x, z_true, P2, k_loss)
 ```
 
+## Simulación de pérdida del magnetómetro
+
+Nuevamente se elige simular la trayectoria circular. A contiuación se presentan los resultados.
 
 ```{julia}
+#| output: false
+
 gps_sig = ones(size(t)) .|> Bool
 mag_sig = ones(size(t)) .|> Bool
 mag_sig[k_loss] = zeros(length(k_loss)) .|> Bool
@@ -900,6 +946,9 @@ mag_sig[k_loss] = zeros(length(k_loss)) .|> Bool
 x, P2, K2 = kalman(t, 10, u, z, Q, R, gps_sig, mag_sig)
 ```
 
+
+### Trayectoria
+
 ```{julia}
 trayectoria_xy(x, z_true, k_loss)
 ```
@@ -908,6 +957,14 @@ trayectoria_xy(x, z_true, k_loss)
 trayectoria_t(t, x, z_true, k_loss)
 ```
 
+
+### Error de estimación
+
+
 ```{julia}
 plot_error(t, x, z_true, P2, k_loss)
 ```
+
+## Observaciones
+
+Se nota que el efecto de la pérdida del GPS impacta mucho más sobre el desempeño del filtro de Kalman que la pérdida del magnetómetro. Esto se ve reflejado tanto en las gráficas de trayectoria y las de la cuantificación del error cuadrático medio. 
